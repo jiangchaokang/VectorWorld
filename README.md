@@ -1,17 +1,26 @@
-<!--
-Replace the placeholder links below with your official URLs:
-- Project page
-- arXiv
-- Hugging Face
-- Demo video
--->
-
-<h1 align="center">VectorWorld: Efficient Streaming World Model via Diffusion Flow on Vector Graphs</h1>
+<!-- ======================================================================
+     VectorWorld — README
+     Replace all placeholder URLs (marked with TODO) before public release.
+     ====================================================================== -->
 
 <p align="center">
-  Official implementation of <b>VectorWorld</b>, a streaming and fully vectorized world model for autonomous driving simulation.
+  <img src="assets/img/VectorWorld-icon.png" alt="VectorWorld" width="100%"/>
 </p>
 
+<h1 align="center">VectorWorld: Efficient Streaming World Model via<br>Diffusion Flow on Vector Graphs</h1>
+
+<p align="center">
+  <a href="https://scholar.google.com/citations?user=6gZ8vloAAAAJ"><b>Chaokang Jiang</b></a><sup>1</sup>&nbsp;&nbsp;
+  <a href="https://scholar.google.com/citations?user=Ux677B4AAAAJ&hl=en"><b>Deshen Zhou</b></a><sup>1</sup>&nbsp;&nbsp;
+  <a href="https://scholar.google.com/citations?user=j4YXCukAAAAJ"><b>Jiuming Liu</b></a><sup>2</sup>&nbsp;&nbsp;
+  <a href="https://scholar.google.com/citations?user=JZViN_4AAAAJ"><b>Kevin Li Sun</b></a><sup>1</sup>
+</p>
+
+<p align="center">
+  <sup>1</sup>Bosch XC&nbsp;&nbsp;&nbsp;&nbsp;<sup>2</sup>University of Cambridge
+</p>
+
+<!-- TODO: replace placeholder URLs before public release -->
 <p align="center">
   <a href="https://your-project-page.example.com">
     <img src="https://img.shields.io/badge/Project-Page-2D7FF9?style=flat-square&logo=googlechrome&logoColor=white" alt="Project Page"/>
@@ -20,73 +29,70 @@ Replace the placeholder links below with your official URLs:
     <img src="https://img.shields.io/badge/arXiv-Paper-B31B1B?style=flat-square&logo=arxiv&logoColor=white" alt="arXiv"/>
   </a>
   <a href="https://huggingface.co/datasets/Jck1998/vectorworld">
-    <img src="https://img.shields.io/badge/Hugging%20Face-Checkpoint-FFD21E?style=flat-square&logo=huggingface&logoColor=black" alt="Hugging Face"/>
+    <img src="https://img.shields.io/badge/Hugging%20Face-Checkpoints-FFD21E?style=flat-square&logo=huggingface&logoColor=black" alt="Hugging Face"/>
   </a>
-  <a href="assets\mp4\ken_burns_mosaic.mp4">
+  <a href="assets/mp4/ken_burns_mosaic.mp4">
     <img src="https://img.shields.io/badge/Demo-Video-FF4B4B?style=flat-square&logo=youtube&logoColor=white" alt="Demo Video"/>
   </a>
 </p>
 
 <p align="center">
-  <a href="assets\mp4\ken_burns_mosaic.mp4">
-    <img src="assets\img\overview.png" alt="VectorWorld Teaser" width="100%"/>
-  </a>
-</p>
-
-<p align="center">
-  <em>Click the teaser to watch the demo video.</em>
+  <img src="assets/mp4/demo.gif" alt="VectorWorld Demo" width="100%"/>
 </p>
 
 ---
 
 ## Overview
 
-VectorWorld is a streaming, fully vectorized world model for autonomous-driving simulation that incrementally generates ego-centric 64m × 64m lane-agent graph tiles during rollout, avoiding the mismatch of history-free initialization and the latency of multi-step sampling. By combining a motion-aware gated VAE, a one-step edge-gated relational generator, and DeltaSim for physics-aligned NPC control, it improves initialization validity and map-structure fidelity while enabling stable, real-time 1km+ closed-loop rollouts on Waymo Open Motion and nuPlan.
+**VectorWorld** is a streaming, fully vectorized world model for autonomous-driving simulation. It incrementally generates ego-centric 64 m × 64 m lane–agent graph tiles during rollout, avoiding the mismatch of history-free initialization and the latency of multi-step sampling. By combining a motion-aware gated VAE, a one-step edge-gated relational generator (EGR-DiT), and DeltaSim for physics-aligned NPC control, VectorWorld improves initialization validity and map-structure fidelity while enabling stable, real-time 1 km+ closed-loop rollouts on [Waymo Open Motion](https://waymo.com/open/) and [nuPlan](https://www.nuscenes.org/nuplan).
 
-> **VectorWorld** represents driving scenes as structured vector graphs — lanes, agents, and motion codes — and supports closed-loop NPC simulation with a hybrid discrete-continuous behavior policy.
+Driving scenes are represented as structured vector graphs comprising lanes, agents, and motion codes. Closed-loop NPC simulation is supported through a hybrid discrete–continuous behavior policy. The overall pipeline proceeds from raw-log extraction, through VAE encoding and latent caching, to EGR-DiT training and streaming environment generation, followed by DeltaSim-based closed-loop evaluation.
 
 ---
 
-## Team
+## Highlights
 
-| Name | Affiliation | Google Scholar |
-|---|---|---|
-| **Chaokang Jiang** | Bosch XC | [Profile](https://scholar.google.com/citations?user=6gZ8vloAAAAJ) |
-| **Deshen Zhou** | Bosch XC | [Profile](https://scholar.google.com/citations?user=Ux677B4AAAAJ&hl=en) |
-| **Jiuming Liu** | University of Cambridge | [Profile](https://scholar.google.com/citations?user=j4YXCukAAAAJ) |
-| **Kevin Li Sun** | Bosch XC | [Profile](https://scholar.google.com/citations?user=JZViN_4AAAAJ) |
+- 🚗 **Streaming generation** — incremental tile-based rollout for unbounded-length driving environments
+- 🧩 **Fully vectorized** — compact graph representation of lanes, agents, and motion codes with no rasterization
+- ⚡ **One-step synthesis** — MeanFlow-based single-step generation enables real-time simulation
+- 🔁 **Closed-loop NPC control** — DeltaSim with discrete anchor actions and continuous residual refinement
+- 📊 **Multi-dataset support** — validated on Waymo Open Motion Dataset v1.1.0 and nuPlan
+
+---
+
+## News
+
+| Date | Update |
+|:---|:---|
+| **2026/03/18** | Model checkpoints released on [Hugging Face](https://huggingface.co/datasets/Jck1998/vectorworld). |
+| **YYYY/MM/DD** | Project page is live. |
+| **YYYY/MM/DD** | Initial code release. |
+| **YYYY/MM/DD** | Paper released on [arXiv](https://arxiv.org/abs/2501.00000). |
+
+---
+
+## Table of Contents
+
+- [Architecture](#architecture)
+- [Installation](#installation)
+- [Pretrained Checkpoints](#pretrained-checkpoints)
+- [Datasets](#datasets)
+- [Quick Start](#quick-start)
+- [Configuration](#configuration)
+- [Repository Structure](#repository-structure)
+- [Acknowledgements](#acknowledgements)
+- [Citation](#citation)
+- [License](#license)
 
 ---
 
 ## Architecture
 
 | Component | Description |
-|---|---|
-| **VAE** | Motion-aware factorized graph autoencoder that encodes vectorized scenes into compact, policy-compatible latents |
-| **EGR-DiT** | Edge-Gated Relational Diffusion Transformer for latent scene generation via MeanFlow / Flow / Diffusion |
-| **DeltaSim** | Hybrid NPC behavior model with discrete anchor actions and continuous residual refinement for stable closed-loop rollout |
-
----
-
-## Workflow
-
-VectorWorld follows a simple and modular pipeline:
-
-1. **Extract raw driving logs** from Waymo Open Motion or nuPlan.
-2. **Preprocess vector-graph scenes** for representation learning and simulation.
-3. **Train the VAE** to obtain compact scene latents.
-4. **Cache latents** and train **EGR-DiT** with MeanFlow / Flow / Diffusion.
-5. **Train DeltaSim** for non-ego agent behavior.
-6. **Generate streaming simulation environments** and run offline or online closed-loop evaluation.
-
----
-
-## News
-
-- **[YYYY/MM/DD]** Paper released on [arXiv](https://arxiv.org/abs/2501.00000).
-- **[YYYY/MM/DD]** Initial code release.
-- **[YYYY/MM/DD]** Project page is live.
-- **[2026/03/18]** Model checkpoints released on [Hugging Face](https://huggingface.co/datasets/Jck1998/vectorworld).
+|:---|:---|
+| **VAE** | Motion-aware factorized graph autoencoder that encodes vectorized scenes into compact, policy-compatible latents. |
+| **EGR-DiT** | Edge-Gated Relational Diffusion Transformer for latent scene generation via MeanFlow, Flow, or Diffusion. |
+| **DeltaSim** | Hybrid NPC behavior model with discrete anchor actions and continuous residual refinement for stable closed-loop rollout. |
 
 ---
 
@@ -99,7 +105,7 @@ cd vectorworld
 conda create -n vectorworld python=3.10 -y
 conda activate vectorworld
 
-# Install PyTorch / PyG according to your CUDA version
+# Install PyTorch and PyG (adjust for your CUDA version)
 pip install torch torchvision
 pip install torch-geometric torch-scatter torch-sparse
 
@@ -112,7 +118,7 @@ export SCRATCH_ROOT=/path/to/your/scratch
 source scripts/define_env_variables.sh
 ```
 
-> **Note:** Please install the PyTorch Geometric packages that match your local CUDA / PyTorch version.
+> **Note:** Please install the [PyTorch Geometric](https://pytorch-geometric.readthedocs.io/) packages that match your local CUDA and PyTorch version.
 
 ---
 
@@ -120,89 +126,66 @@ source scripts/define_env_variables.sh
 
 Released checkpoints can be downloaded from [Hugging Face](https://huggingface.co/datasets/Jck1998/vectorworld) and placed under:
 
-```text
+```
 metadata/checkpoints/
 ├── waymo
-│   ├── vae
-│   │   └── last.ckpt
+│   ├── vae/last.ckpt
 │   ├── ldm
-│   │   ├── diffusion
-│   │   │   └── last.ckpt
-│   │   ├── flow
-│   │   │   └── last.ckpt
-│   │   └── meanflow
-│   │       └── last.ckpt
-│   └── delta_sim
-│       └── last.ckpt
+│   │   ├── diffusion/last.ckpt
+│   │   ├── flow/last.ckpt
+│   │   └── meanflow/last.ckpt
+│   └── delta_sim/last.ckpt
 └── nuplan
-    ├── vae
-    │   └── last.ckpt
+    ├── vae/last.ckpt
     └── ldm
-        ├── diffusion
-        │   └── last.ckpt
-        ├── flow
-        │   └── last.ckpt
-        └── meanflow
-            └── last.ckpt
+        ├── diffusion/last.ckpt
+        ├── flow/last.ckpt
+        └── meanflow/last.ckpt
 ```
 
 ---
 
 ## Datasets
 
-VectorWorld currently supports:
-
-- **Waymo Open Motion Dataset v1.1.0**
-- **nuPlan**
+VectorWorld currently supports **Waymo Open Motion Dataset v1.1.0** and **nuPlan**.
 
 ### Raw-data conversion
 
-Before VectorWorld preprocessing, the raw datasets should first be converted into extracted scenario files. We follow the Scenario Dreamer-style preprocessing pipeline:
+Before VectorWorld preprocessing, the raw datasets should first be converted into extracted scenario files. We follow the [Scenario Dreamer](https://github.com/princeton-computational-imaging/scenario-dreamer)-style preprocessing pipeline:
 
-- **Waymo conversion script:** [generate_waymo_dataset.py](https://github.com/princeton-computational-imaging/scenario-dreamer/blob/main/data_processing/waymo/generate_waymo_dataset.py)
-- **nuPlan conversion script:** [generate_nuplan_dataset.py](https://github.com/princeton-computational-imaging/scenario-dreamer/blob/main/data_processing/nuplan/generate_nuplan_dataset.py)
+| Dataset | Conversion script |
+|:---|:---|
+| Waymo | [`generate_waymo_dataset.py`](https://github.com/princeton-computational-imaging/scenario-dreamer/blob/main/data_processing/waymo/generate_waymo_dataset.py) |
+| nuPlan | [`generate_nuplan_dataset.py`](https://github.com/princeton-computational-imaging/scenario-dreamer/blob/main/data_processing/nuplan/generate_nuplan_dataset.py) |
 
-In this repository, the corresponding extraction entry points are:
+The corresponding extraction entry points in this repository are `scripts/extract_waymo_data.sh` and `scripts/extract_nuplan_data.sh`.
 
-- `scripts/extract_waymo_data.sh`
-- `scripts/extract_nuplan_data.sh`
+### Preprocessing
 
-### Repository preprocessing scripts
-
-The main preprocessing scripts are:
-
-- `scripts/preprocess_waymo.sh`
-- `scripts/preprocess_nuplan.sh`
-- `scripts/preprocess_deltasim_waymo.sh`
-
-These scripts wrap the preprocessing logic in `tools/preprocess/` and can be adapted for different splits, shards, and storage paths.
+The main preprocessing scripts are `scripts/preprocess_waymo.sh`, `scripts/preprocess_nuplan.sh`, and `scripts/preprocess_deltasim_waymo.sh`. These scripts wrap the logic in `tools/preprocess/` and can be adapted for different splits, shards, and storage paths.
 
 ---
 
 ## Quick Start
 
-The minimal commands below use the Python entry points directly for clarity and reproducibility. Convenience recipes are also provided in `scripts/`.
+The commands below use Python entry points directly for clarity and reproducibility. Convenience shell recipes are also provided in `scripts/`.
 
-### 1. Prepare data
+### Step 1 — Prepare data
 
 ```bash
-# Extract raw Waymo scenarios
+# Extract raw scenarios
 bash scripts/extract_waymo_data.sh
-
-# Extract raw nuPlan scenarios
 bash scripts/extract_nuplan_data.sh
 
-# Preprocess vector-graph data for VAE / LDM
+# Preprocess vector-graph data
 bash scripts/preprocess_waymo.sh
 bash scripts/preprocess_nuplan.sh
-
-# Preprocess Waymo data for DeltaSim
 bash scripts/preprocess_deltasim_waymo.sh
 ```
 
-> **Tip:** The shell scripts are templates. For public experiments, you may further customize split names, shard ids, and output directories via Hydra or by editing the scripts.
+> **Tip:** The shell scripts are templates. Customize split names, shard IDs, and output directories via [Hydra](https://hydra.cc/) overrides or by editing the scripts directly.
 
-### 2. Train the VAE
+### Step 2 — Train the VAE
 
 ```bash
 python3 tools/train.py \
@@ -215,7 +198,7 @@ python3 tools/train.py \
   ae.train.run_name=vectorworld_vae_waymo
 ```
 
-### 3. Cache latents for EGR-DiT training
+### Step 3 — Cache latents for EGR-DiT training
 
 ```bash
 # Cache train split
@@ -243,9 +226,9 @@ python3 tools/generate.py \
   ae.eval.cache_latents.latent_dir=metadata/datasets/waymo/vae_latents
 ```
 
-### 4. Train the latent generator (EGR-DiT)
+### Step 4 — Train the latent generator (EGR-DiT)
 
-#### MeanFlow
+**MeanFlow**
 
 ```bash
 python3 tools/train.py \
@@ -258,7 +241,7 @@ python3 tools/train.py \
   ldm.train.run_name=vectorworld_meanflow_waymo
 ```
 
-#### Flow / Diffusion
+**Flow / Diffusion**
 
 ```bash
 python3 tools/train.py \
@@ -281,12 +264,11 @@ python3 tools/train.py \
   ldm.model.gcf_var_scale=0.15
 ```
 
-> Replace `flow` with `diffusion` if desired.  
-> See `scripts/train_egr_dit.sh` for the full training recipe.
+> Replace `flow` with `diffusion` if desired. See `scripts/train_egr_dit.sh` for the full training recipe.
 
-### 5. Generate scenes with the trained LDM
+### Step 5 — Generate scenes
 
-#### Initial-scene generation
+**Initial-scene generation**
 
 ```bash
 python3 tools/generate.py \
@@ -303,7 +285,7 @@ python3 tools/generate.py \
   ldm.eval.visualize=true
 ```
 
-#### Streaming simulation-environment generation
+**Streaming simulation-environment generation**
 
 ```bash
 python3 tools/generate.py \
@@ -324,7 +306,7 @@ python3 tools/generate.py \
 
 > See `scripts/infer_egr_dit.sh` for additional generation recipes.
 
-### 6. Train DeltaSim
+### Step 6 — Train DeltaSim
 
 ```bash
 python3 tools/train.py \
@@ -340,11 +322,11 @@ python3 tools/train.py \
   deltasim.model.phys_prior.enabled=true
 ```
 
-> See `scripts/train_deltasim.sh` for the full training configuration with RTG conditioning, residual refinement, and physics priors.
+> See `scripts/train_deltasim.sh` for the full configuration with RTG conditioning, residual refinement, and physics priors.
 
-### 7. Closed-loop simulation
+### Step 7 — Closed-loop simulation
 
-#### Offline simulation
+**Offline simulation**
 
 ```bash
 bash scripts/run_simulation_parallel.sh \
@@ -355,7 +337,7 @@ bash scripts/run_simulation_parallel.sh \
   postprocess_sim_envs.run_name=vectorworld_flow_waymo
 ```
 
-#### Online parallel simulation
+**Online parallel simulation**
 
 ```bash
 bash scripts/run_simulation_parallel.sh \
@@ -371,9 +353,7 @@ The simulation script automatically configures the correct generator settings fo
 
 ## Configuration
 
-VectorWorld uses [Hydra](https://hydra.cc/) for composable experiment management. Almost every option can be overridden directly from the command line.
-
-Example:
+VectorWorld uses [Hydra](https://hydra.cc/) for composable experiment management. Almost every option can be overridden directly from the command line:
 
 ```bash
 python3 tools/generate.py \
@@ -385,56 +365,49 @@ python3 tools/generate.py \
   ldm.eval.sim_envs.route_length=500
 ```
 
-Useful config knobs:
-
-- `ldm.model.ldm_type`: `meanflow`, `flow`, `diffusion`
-- `ldm.eval.mode`: `initial_scene`, `simulation_environments`
-- `sim`: `base`, `online`
-- `sim.num_workers`: number of simulation workers
-- `ldm.eval.sim_envs.route_length`: target rollout route length
-- `ae.eval.cache_latents.*`: latent caching options
+Frequently used configuration knobs include `ldm.model.ldm_type` (`meanflow` | `flow` | `diffusion`), `ldm.eval.mode` (`initial_scene` | `simulation_environments`), `sim` (`base` | `online`), `sim.num_workers`, `ldm.eval.sim_envs.route_length`, and `ae.eval.cache_latents.*`.
 
 ---
 
 ## Repository Structure
 
-```text
+```
 vectorworld/
-├── assets/                  # Teaser figures, videos, README media
+├── assets/                  # Figures, videos, and README media
 ├── configs/                 # Hydra configuration files
 ├── scripts/                 # Convenience shell recipes
-├── tools/                   # Python entry points for train / generate / preprocess / simulate
+├── tools/                   # Entry points: train / generate / preprocess / simulate
 ├── vectorworld/             # Core package
-│   ├── models/              # Lightning modules: VAE, EGR-DiT, DeltaSim
-│   ├── networks/            # Backbone architectures and heads
-│   ├── data/                # Datasets and datamodules
-│   ├── simulation/          # Closed-loop simulator and policies
-│   └── utils/               # Geometry, visualization, and helper functions
-└── metadata/                # Checkpoints, latent stats, logs, and processed assets
+│   ├── models/              #   Lightning modules — VAE, EGR-DiT, DeltaSim
+│   ├── networks/            #   Backbone architectures and heads
+│   ├── data/                #   Datasets and data modules
+│   ├── simulation/          #   Closed-loop simulator and policies
+│   └── utils/               #   Geometry, visualization, helpers
+└── metadata/                # Checkpoints, latent stats, logs, processed assets
 ```
 
 ---
 
 ## Acknowledgements
 
-This project is inspired by and builds upon several excellent open-source efforts:
-
-- [SLEDGE](https://github.com/autonomousvision/sledge/tree/main)
-- [Scenario Dreamer](https://github.com/princeton-computational-imaging/scenario-dreamer)
-- [MeanFlow](https://github.com/haidog-yaqub/MeanFlow)
-
-We thank the authors of these projects for making their work publicly available.
+This project is inspired by and builds upon several excellent open-source efforts: [SLEDGE](https://github.com/autonomousvision/sledge) (ECCV 2024), [Scenario Dreamer](https://github.com/princeton-computational-imaging/scenario-dreamer), and [MeanFlow](https://github.com/haidog-yaqub/MeanFlow). We thank the authors for making their work publicly available.
 
 ---
 
 ## Citation
 
-If you find this repository useful, please consider starring the repo and citing our work:
+If you find this work useful, please consider citing:
 
 ```bibtex
 @article{jiang2025vectorworld,
   title   = {VectorWorld: Efficient Streaming World Model via Diffusion Flow on Vector Graphs},
-  author  = {Chaokang Jiang and Deshen Zhou and Jiuming Liu and Kevin Li Sun},
+  author  = {Jiang, Chaokang and Zhou, Deshen and Liu, Jiuming and Sun, Kevin Li},
   year    = {2025}
 }
 ```
+
+---
+
+## License
+
+This project is released under the [Apache 2.0 License](LICENSE).
