@@ -1,0 +1,103 @@
+# ---------------- Lane branch capacity ----------------
+hidden_dim: 768              # lane Hidden Dimension (former 512)
+num_encoder_blocks: 3        # Encoder factor Block (former 2)
+num_decoder_blocks: 3        # Decoder Factor Block (former 2)
+lane_attr: 2                 # number of lane attributes (x and y coordinates)
+
+num_heads: 8                 # lane attachment heads
+dropout: 0                   # dropout rate
+dim_f: 2048                  # lane FFNDim (former 2048)
+
+# ---------------- Agent state & motion ----------------
+state_dim: 7                 # static agent feature: [x, y, speed, cosθ, sinθ, length, width]
+
+# motion_dim = 2 * ae.dataset.motion.num_points  (K=6 → 12D)
+motion_dim: ${ae.dataset.motion.dim}
+
+num_agent_types: 3           # 0: vehicle, 1: pedestrian, 2: cyclist
+
+# ---------------- Lane connectivity & types -----------
+lane_conn_attr: null         # set by waymo_autoencoder.yaml
+num_lane_types: null         # set by waymo_autoencoder.yaml
+
+# ---------------- Agent branch capacity ---------------
+agent_hidden_dim: 384        # Agent Hidden Dimension (formerly 256)
+agent_num_heads: 8           # Agent attention heads (former 4)
+agent_dim_f: 1024            # agent FFNDim (former 1024)
+
+lane_conn_hidden_dim: 96     # lane-connectionHidden dim (former 64)
+
+lane_latent_dim: 24          # lane latent dimension (alternate)
+agent_latent_dim: 18         # agent latent dimension (alternate)
+
+
+# ======================================================================
+# Loss weights & regularizers
+# ======================================================================
+
+# KL in Beta-VAE(overall maintained low beta to prevent excessive contraction)
+kl_weight: 1e-2              # weight of KL loss in VAE training
+
+# Lane Relief & Conceptivity (Slightly reduced, here)agent/motion♪ Tossing Space ♪
+lane_weight: 10
+lane_conn_weight: 10
+
+# Conditional plane count preparer (for inpinting)
+cond_dis_weight: 0.08         # weight of conditional lane distribution predictor
+lane_endpoint_weight: 1.0    # It turns out 2.0, as a moderate rule.
+
+
+# ======================================================================
+# Motion-specific hyper-parameters
+# ======================================================================
+
+# Main move recreates the L1 weight (compared to state 7D)
+motion_loss_weight: 1.0
+motion_smooth_weight: 1e-2   # Original 1e-2, withREADMESuggested Close
+
+# Soft bumps (approximate) on the current frame 7D, the greater the value, the more conservative.
+motion_collision_weight: 0.1  # From 0.1 to 0.1 to avoid suppression of major reconstruction
+
+# Soft bump safety buffer (m): extra safety distance before collision
+collision_margin: 0.1
+
+
+# ---------Motion Specialized excess (new)------
+# Normalize position ([]-1In the case of stationary vehicles, the following weights shall be applied:
+#
+# 1. The length of the modifier track path_len_norm is still first, based on the GT movement pointline:
+#        Path_len_norm < movement_static_eps — static
+# 2. The movement L1 for each agent is:
+#        l1_i = mean(|pred_i - gt_i|)
+#    loss_motion = scene_mean( w_i * l1_i )
+#    Of which w_i = movement_static_weight, 1.0 (dynamic)
+#
+# Benefits:
+#   - Strengthening of the discrete model of "stationary";
+#   - The formation of a clear and static cluster in the space of latents.LDMKeep position_nonzero_frac close to GT.
+motion_static_weight: 2.0     # Static vehicle movement L1 zoom factor
+motion_static_eps: 0.03       # Path_len_norm < 0.03 is considered static
+static_xy_weight: 3.0      # (x,y) Location loss amplifier factor
+static_other_weight: 1.0   # Other 5-dimensional static (speed, cos, sin, English, West)
+
+
+# -------motion-related (with)dataset.motionAlignment) ----
+motion_num_points: ${ae.dataset.motion.num_points}
+motion_x_range:   ${ae.dataset.motion.max_displacement}  # Vertical [T]-D,0]m (D=12)
+motion_y_range:   ${ae.dataset.motion.y_max}             # Horizontal [T]-6,6]m
+latent_noise_std: 0.05
+
+
+# ======================================================================
+# Dataset-derived constants (injected via interpolation)
+# ======================================================================
+
+num_points_per_lane: ${ae.dataset.num_points_per_lane}
+max_num_lanes:       ${ae.dataset.max_num_lanes}
+
+# For AE internal physical space to be normalized (colliding rule)
+fov:        ${ae.dataset.fov}
+min_length: ${ae.dataset.min_length}
+max_length: ${ae.dataset.max_length}
+min_width:  ${ae.dataset.min_width}
+max_width:  ${ae.dataset.max_width}

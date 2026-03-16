@@ -1,0 +1,39 @@
+seed: 0 # random seed for reproducibility
+save_dir: outputs/checkpoints/ # save directory for evaluation results
+run_name: null # name of the run to be evaluated
+
+# -----------------------------------------------------------------------------
+# Benchmark config (forward-only latency / memory / params)
+# -----------------------------------------------------------------------------
+bench:
+  enabled: false
+
+  # target:
+  #   - ldm_latent : only Graph-DiT sampler (diffusion/flow/meanflow)
+  #   - ldm_decode : sampler + AE decode + unnormalize (runnable scene decode cost)
+  #   - ae_forward : AE encoder+decoder+unnormalize
+  #   - ae_encoder : AE encoder only
+  #   - ae_decoder : AE decoder only (latents precomputed outside timing)
+  target: null
+
+  # LDM-specific
+  ldm_mode: initial_scene   # initial_scene | inpainting | lane_conditioned
+
+  # Input scale
+  num_scenes: 256
+  batch_size: 16
+  num_batches: 8
+
+  # Timing
+  num_warmup: 10
+  num_iters: 50
+
+  clear_cuda_cache_between_batches: false
+  verbose: true
+
+  amp:
+    enabled: true
+    dtype: bf16  # bf16 | fp16
+
+  # Optional: explicit save_path; if null => auto "<save_dir>/<run_name>/bench/bench_*.json"
+  save_path: null

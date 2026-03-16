@@ -1,0 +1,10 @@
+defaults:
+- nuplan_base
+
+dataset_path: /workspace/share-per1/jca3sgh/vectorworld/datasets/nuplan/sd_ae_large_latents
+latent_stats_dir: metadata/latent_stats
+latent_stats_path: metadata/latent_stats/scenario_dreamer_autoencoder_nuplan.pkl
+agent_latents_mean: null
+agent_latents_std: null
+lane_latents_mean: null
+lane_latents_std: null

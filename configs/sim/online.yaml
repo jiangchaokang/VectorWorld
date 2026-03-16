@@ -1,0 +1,115 @@
+seed: 0
+mode: vectorworld_online
+
+# Stop reading scenes from disk datasets in online mode
+dataset_path: null
+
+policy: idm               # Use StillIDMAs a measure, Planner.
+visualize: False
+lightweight: False
+movie_path: ${project_root}/movies
+verbose: True
+steps: 400
+dt: 0.1
+
+# Whether the complete simulation trajectory (scenario_dict + data_dict) should be dropped as pkl
+save_trajectory: False
+trajectory_path: ${project_root}/sim_traces/online
+
+# Number of multiprocesses working in parallel (only)run_simulation_parallel.pyused)
+num_workers: 1
+
+simulate_vehicles_only: False
+
+# An evaluation of how many you want to run.
+num_online_scenarios: 64
+# Every time toLDMHow many scenes are requested?
+online_batch_size: 8
+
+# OnlineLDMAt most, how many attempts are made to generate the scene (a series of scenes are re-sampling each time).
+# It's only true that a single legal scene can't be generated if it's the next time that max_online_gen_tries.
+max_online_gen_tries: 3
+
+
+behaviour_model:
+  run_name: ctrl_sim_waymo_1M_steps
+  tilt: 10
+  action_temperature: 1.0
+  use_rtg: True
+  predict_rtgs: True
+  compute_metrics: False
+  init_history_from_motion: False
+  history_from_motion_num_points: 6
+  
+  amp:
+    enabled: true
+    dtype: bf16  # bf16 | fp16
+  # Motion History Speed Control Switch (for reconstructing fake history from agent_motion)
+  motion_history:
+    speed_mode: clamped
+    speed_scale: 1.0
+    min_speed: 0.0
+    max_speed: 30.0
+    max_scale: 2.0
+  
+  # New: configuration overwrite
+  inference:
+    residual_refine:
+      enabled: true
+      use_refine_in_eval: true
+      refine_scale: 1.0
+    
+    collision_avoidance:
+      enabled: true
+      beta: 2.0
+      margin: 0.2
+      min_dist_clip: 0.05
+    
+    rtg_inference:
+      mode: one_pass_like
+  
+  variant: ours
+  ckpt:
+    ours: metadata/checkpoints/waymo/delta_sim/epoch41_step79884.ckpt
+    baseline: data/ckpt/ctrl_sim_waymo_1M_steps/last.ckpt
+  model_path: ${.ckpt.${.variant}}
+
+new_agent_filter:
+  dist_gap_s: 5.0
+  heading_threshold: 0.5235987755982988
+  dist_threshold: 2.0
+
+# -----------------------------------------------------------------------------
+# NEW: Save aggregated simulation metrics (for paper tables)
+# If null => do not save.
+# If dir => will save "sim_metrics_<mode>_seed<seed>.json" under that dir.
+# If file path ends with .json => save exactly there.
+# -----------------------------------------------------------------------------
+metrics_save_path: null
+
+eval_metrics:
+  enabled: true
+  report_ci: false
+
+  warmstart:
+    enabled: true
+
+  dynamics:
+    enabled: true
+
+  physics:
+    enabled: true
+    apply_to: vehicle
+    yaw_rate_max: null
+    arc_res_max: null
+    kappa_max: null
+    a_lat_max: null
+    a_long_max: null
+    reverse_allow: null
+
+  safety:
+    enabled: true
+    apply_to: vehicle
+    ttc_threshold_s: 1.5
+    dist_threshold_m: 1.0
+    ttc_margin_m: 0.2

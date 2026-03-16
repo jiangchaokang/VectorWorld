@@ -1,0 +1,73 @@
+preprocess: True  # True: train from preprocessed files; False: write preprocessed files to disk
+preprocess_dir: metadata/datasets/waymo/deltasim
+dataset_path: data/scenario_dreamer_waymo
+
+train_context_length: 32
+max_num_lanes: 100
+max_num_agents: 24
+
+lane_fov: 300
+fov: 80
+
+num_points_per_lane: 50
+upsample_lane_num_points: 1000
+simulation_hz: 10
+
+offroad_threshold: 2.5
+moving_threshold: 0.0
+normalize_to_random_timestep: True
+
+# ------------------------------------------------------------
+# RTG (Return-To-Go) configuration
+# ------------------------------------------------------------
+rtg:
+  # horizon in TIMESTEPS (not seconds)
+  horizon_steps: 50
+  discount: 0.97
+
+  # clip range BEFORE normalization to [0,1]
+  clip_min: -100.0
+  clip_max: 0.0
+
+  # number of discrete bins — 350 is the original ctrlsim default
+  # IMPORTANT: This value determines:
+  #   1. The embedding table size for RTG tokens
+  #   2. The output dimension of predict_rtg head
+  #   3. The valid range of RTG tokens is [0, discretization-1]
+  # Changing this requires retraining the model (not re-preprocessing data).
+  discretization: 350
+
+  reward:
+    # ego_collision: only hard collision
+    # ego_collision_proximity: hard collision + soft proximity risk
+    mode: ego_collision_proximity
+
+    collision_weight: 1.0
+
+    # proximity soft cost: (margin - gap)_+^2, gap = dist - (r_i + r_ego)
+    proximity_weight: 0.25
+    proximity_margin: 2.0
+    proximity_min_dist_clip: 0.05
+
+# ------------------------------------------------------------
+# Backward-compat aliases (do not edit; keep for repo safety)
+# ------------------------------------------------------------
+value_fn_horizon: ${.rtg.horizon_steps}
+min_rtg_veh: ${.rtg.clip_min}
+max_rtg_veh: ${.rtg.clip_max}
+rtg_discretization: ${.rtg.discretization}
+
+# legacy scale knob (kept but NOT used by the new code path)
+rew_multiplier: 1.0
+
+# -----------------------------
+# k-disks tokenizer settings
+# -----------------------------
+collect_state_transitions: False
+k_disks_vocab_path: data/metadata/k_disks_vocab_384_10Hz_seed42.pkl
+vocab_size: 384
+k_disks_eps: 0.035
+
+tokenize_with_nucleus_sampling: True
+tokenization_temperature: 0.008
+tokenization_nucleus: 0.95

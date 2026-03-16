@@ -1,0 +1,16 @@
+defaults:
+- waymo_base
+
+dataset_path:  data/scenario_dreamer_waymo
+preprocess: True
+preprocess_dir: metadata/datasets/waymo/sd_ae_motion_preprocess
+generate_only_vehicles: False
+remove_left_right_connections: False
+
+
+
+save_to_cos: False
+cos_secret_id: ${oc.env:VECTORWORLD_COS_SECRET_ID,""}
+cos_secret_key: ${oc.env:VECTORWORLD_COS_SECRET_KEY,""}
+cos_bucket: ${oc.env:VECTORWORLD_COS_BUCKET,""}
+cos_prefix: ${oc.env:VECTORWORLD_COS_PREFIX,""}

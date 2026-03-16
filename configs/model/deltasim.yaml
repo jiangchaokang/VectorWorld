@@ -1,0 +1,170 @@
+hidden_dim: 256 # ctrl-sim model hidden dim
+map_attr: 3 # number of map attributes (x,y,existence)
+num_road_types: 1 # number of road types in map encoder
+num_heads: 8 # number of attention heads
+num_reward_components: 1 # number of modeled reward components
+dim_feedforward: 1024 # feedforward dim in transformer
+dropout: 0 # model is not overfitting
+state_dim: 13 # number of features in state. Note we have is_ego feature
+predict_rtg: True # predict return-to-go
+num_transformer_encoder_layers: 3 # number of transformer encoder layers
+num_decoder_layers: 6 # number of transformer decoder layers
+loss_action_coef: 1. # coefficient for action loss
+encode_initial_state: True # whether to encode initial state in encoder
+trajeglish: False # set to true to train trajeglish model: https://arxiv.org/abs/2312.04535
+ctrl_sim: True # set to true to train ctrl-sim model: https://arxiv.org/abs/2403.19918
+il: False # set to true to train imitation learning model (no return tokens)
+
+# Physics prior (optional - disabled by default for baseline compatibility)
+phys_prior:
+  enabled: false
+  apply_in_train: false
+  apply_in_eval: false
+  beta: 1.0
+  beta_anneal_steps: 30000
+  cost_mode: normalized
+  only_apply_on_exists: true
+  apply_to: vehicle
+  yaw_rate_max: 1.5
+  arc_res_max: 0.35
+  kappa_max: 0.25
+  a_lat_max: 8.0
+  a_long_max: 6.0
+  reverse_allow: 0.05
+  weights:
+    reverse: 1.0
+    yaw_rate: 1.0
+    arc: 0.8
+    curvature: 0.2
+    a_lat: 0.5
+    a_long: 0.3
+  hard_mask:
+    enabled: false
+    yaw_rate_hard_max: 6.0
+    arc_res_hard_max: 1.2
+    max_tokens_to_mask: 64
+  log_stats: false
+
+# Auxiliary losses (optional - disabled by default)
+expected_phys_loss:
+  enabled: false
+  coef: 0.01
+  coef_anneal_steps: 30000
+  use_shaped_logits: false
+  use_cost_mode: match_phys
+  apply_to: vehicle
+
+risk_se2_loss:
+  enabled: false
+  coef: 0.02
+  w_xy: 1.0
+  w_yaw: 0.2
+  use_shaped_logits: true
+  apply_to: vehicle
+
+temporal_smooth_loss:
+  enabled: false
+  coef: 0.03
+  coef_anneal_steps: 30000
+  w_xy: 1.0
+  w_yaw: 0.2
+  use_shaped_logits: false
+  apply_to: vehicle
+  require_exists_t_and_tm1: true
+
+# Map encoder (optional)
+map_encoder:
+  use_point_pos_emb: false
+
+# Data augmentation (optional - training only)
+action_corruption:
+  enabled: false
+  prob: 0.10
+  mode: random
+  apply_to: vehicle
+  keep_t0: true
+
+rtg_corruption:
+  enabled: false
+  prob: 0.10
+  mode: random
+  apply_to: vehicle
+  keep_t0: true
+
+# Time-weighted action loss (optional)
+action_loss_weighting:
+  enabled: false
+  mode: last_k
+  last_k: 8
+  early_weight: 0.2
+
+# Gated Attention (optional)
+attn_gate:
+  enabled: false
+  init_bias: -2.0
+
+# One-pass RTG conditioning (optional)
+rtg_conditioning:
+  enabled: false
+  anneal_steps: 30000
+  alpha_start: 1.0
+  alpha_end: 0.0
+  stopgrad_pred: true
+  use_tilt_in_eval: true
+
+# Collision avoidance (inference only, optional)
+collision_avoidance:
+  enabled: false
+  beta: 2.0
+  margin: 0.2
+  min_dist_clip: 0.05
+
+# ---------------- DKAL (Behavior Model) ----------------
+dkal:
+  enabled: True
+  coef: 0.05
+  coef_anneal_steps: 30000
+  beta: 1.0
+  apply_to: vehicle
+  cost_mode: match_phys      # match_phys | normalized | raw
+  center_logits: true
+  center_cost: true
+  detach_cost: true
+  use_logits: raw            # raw | shaped
+
+# ============================================================
+# Residual Refinement Head (Hybrid Discrete-Continuous)
+# ============================================================
+# 
+# Essential principles:
+# - Disconnect action head forecastSE(2)Fluid K=384 One of the anchors
+# - Continuous refine head predicts fine adjustments in the anchor cut space (dx, dy, dw)
+# - Final action = Anchor + Redual, accuracy no longer limited to word density
+#
+# Training strategy:
+# - Categorize:CrossEntropy(logits, k_gt)
+# - Back to loss:HuberLoss(δ_pred, δ_target) where δ_target = Δ_gt - V[k_gt]
+# - Back to the target.GPUOn-time calculation without pre-procession memory
+#
+residual_refine:
+  enabled: true              # Set as True Enable Mixed Head
+  
+  # Loss weight and warmup
+  loss_coef: 0.2              # Returns loss weight
+  loss_coef_anneal_steps: 20000  # Warmup steps (linear to loss_coef)
+  
+  # ♪ Everybody frame: dx, dy, ding ♪
+  w_xy: 1.0                   # Position margin weight
+  w_yaw: 0.3                  # Weight for navigational residues (radians, different scales, descending rights)
+  
+  # Loss type
+  use_huber: true             # true=HuberLoss, false=MSELoss
+  huber_delta: 0.1            # delta arguments for Huber loss
+  
+  # Scope of application
+  apply_to: vehicle           # vehicle | all
+  require_exists_both: true   # Require t and t+1 to exist
+  
+  # Configure when reasoning
+  use_refine_in_eval: true    # Whether to use refine head in reasoning
+  refine_scale: 1.0           # Disaggregate factor when reasoning (0 = disabled, 1 = full)

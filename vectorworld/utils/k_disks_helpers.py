@@ -1,0 +1,288 @@
+import numpy as np
+from vectorworld.utils.geometry import normalize_angle
+from tqdm import tqdm
+
+def compute_k_disks_vocabulary(state_transitions, vocab_size, l, w, eps):
+    """ Computes k-disks vocabulary from buffer of state transitions."""
+    box_coords = np.array([
+        [-l/2, -w/2],
+        [-l/2, w/2],
+        [l/2, w/2],
+        [l/2, -w/2]
+    ])
+
+    print("Number of state transitions: ", len(state_transitions))
+    V = []
+    for i in tqdm(range(vocab_size)):
+        print("Number of state transitions: ", len(state_transitions))
+        indices = np.arange(len(state_transitions))
+        rand_idx = np.random.choice(indices, 1)[0]
+        # ensure sampled transition is within reasonable bounds
+        while not(state_transitions[rand_idx, 0] > -0.2 and 
+                  state_transitions[rand_idx, 0] < 3.5 and 
+                  np.abs(state_transitions[rand_idx, 1]) < 0.25):
+            rand_idx = np.random.choice(indices, 1)[0]
+        
+        V.append(state_transitions[rand_idx])
+
+        # first apply rotation
+        box_coords_duplicated = np.tile(box_coords[None, :, :], (len(state_transitions), 1, 1))
+        box_coords_duplicated = box_coords_duplicated.reshape(-1, 2)
+
+        rotations = state_transitions[:, 2].repeat(4) # 4 for the four corners of each box
+        cos_theta = np.cos(rotations)
+        sin_theta = np.sin(rotations)
+
+        # Create rotation matrices
+        rotation_matrices = np.array([[cos_theta, -sin_theta], [sin_theta, cos_theta]])  # Shape [2, 2, N]
+        rotation_matrices = np.transpose(rotation_matrices, (2, 0, 1))  # Shape [N, 2, 2]
+
+        # Apply rotation matrices to pos_x, pos_y
+        rotated_box_positions = np.einsum('ijk,ik->ij', rotation_matrices, box_coords_duplicated)
+
+        # then apply transformation
+        transformed_box_positions = rotated_box_positions + state_transitions[:, :2].repeat(4, 0)
+        transformed_box_positions = transformed_box_positions.reshape(-1, 4, 2)
+
+        err = np.linalg.norm(transformed_box_positions - transformed_box_positions[int(rand_idx):int(rand_idx+1)], axis=-1).mean(1)
+        err_below_threshold = err < eps
+        state_transitions = state_transitions[~err_below_threshold]
+
+    return V
+
+
+def transform_box_corners_from_vocab(box_coords, V):
+    """ Transforms box corner coordinates using a vocabulary of transformations."""
+    # box_corners: [T, 4, 2]
+    # V: [384, 3]
+    # returns: transformed_box_corners: [A, 384, 4, 2]
+    
+    vocab_size = len(V)
+    T = box_coords.shape[0]
+    box_coords_duplicated = np.tile(box_coords[:, None, :, :], (1, vocab_size, 1, 1))
+    box_coords_duplicated = box_coords_duplicated.reshape(-1, 2)
+    V_duplicated = np.tile(V[None, :, None, :], (T, 1, 4, 1))
+
+    rotations = V_duplicated[:,:,:,2].reshape(-1)
+    cos_theta = np.cos(rotations)
+    sin_theta = np.sin(rotations)
+
+    # Create rotation matrices
+    rotation_matrices = np.array([[cos_theta, -sin_theta], [sin_theta, cos_theta]])  # Shape [2, 2, N]
+    rotation_matrices = np.transpose(rotation_matrices, (2, 0, 1))  # Shape [N, 2, 2]
+
+    # Apply rotation matrices to pos_x, pos_y
+    rotated_box_positions = np.einsum('ijk,ik->ij', rotation_matrices, box_coords_duplicated)
+
+    # then apply transformation
+    transformed_box_positions = rotated_box_positions + V_duplicated[:,:,:,:2].reshape(-1, 2)
+    transformed_box_positions = transformed_box_positions.reshape(-1, vocab_size, 4, 2)
+
+    return transformed_box_positions
+
+
+def get_local_state_transition(current_state, next_state):
+    """ Computes the relative motion that takes you from current_state 
+    to next_state expressed in the local coordinates system of current_state."""
+    diff_pos_all = next_state[:, :2] - current_state[:, :2]
+    diff_head_all = normalize_angle(next_state[:, 2:] - current_state[:, 2:])
+        
+    diff_pos_all_reshaped = diff_pos_all.reshape(-1, 2)
+    # apply negative of rotation of src state
+    rotations_reshaped = -1 * current_state[:, 2].reshape(-1)
+    cos_theta = np.cos(rotations_reshaped)
+    sin_theta = np.sin(rotations_reshaped)
+    rotation_matrices = np.array([[cos_theta, -sin_theta], [sin_theta, cos_theta]])  # Shape [2, 2, N]
+    rotation_matrices = np.transpose(rotation_matrices, (2, 0, 1))  # Shape [N, 2, 2]
+    
+    rotated_diff_pos_all_reshaped = np.einsum('ijk,ik->ij', rotation_matrices, diff_pos_all_reshaped)
+    diff_head_all_reshaped = diff_head_all.reshape(-1, 1)
+
+    state_transitions = np.concatenate([rotated_diff_pos_all_reshaped, diff_head_all_reshaped], axis=-1)
+    
+    return state_transitions
+
+
+def transform_box_corners_from_local_state(box_coords, local_state_transitions):
+    """ Transforms box corner coordinates using local state transitions."""
+    # box_coords: [A, 4, 2]
+    # local_state_transitions: [A, 3]
+    # returns: transformed_box_positions: [A, 4, 2]
+    
+    local_state_transitions_duplicated = np.tile(local_state_transitions[:, None, :], (1, 4, 1))
+    box_coords_duplicated = box_coords.reshape(-1, 2)
+
+    rotations = local_state_transitions_duplicated[:,:,2].reshape(-1)
+    cos_theta = np.cos(rotations)
+    sin_theta = np.sin(rotations)
+
+    # Create rotation matrices
+    rotation_matrices = np.array([[cos_theta, -sin_theta], [sin_theta, cos_theta]])  # Shape [2, 2, N]
+    rotation_matrices = np.transpose(rotation_matrices, (2, 0, 1))  # Shape [N, 2, 2]
+
+    # Apply rotation matrices to pos_x, pos_y
+    rotated_box_positions = np.einsum('ijk,ik->ij', rotation_matrices, box_coords_duplicated)
+
+    # then apply transformation
+    transformed_box_positions = rotated_box_positions + local_state_transitions_duplicated[:,:,:2].reshape(-1, 2)
+    transformed_box_positions = transformed_box_positions.reshape(-1, 4, 2)
+
+    return transformed_box_positions
+
+
+def get_global_next_state(global_states, local_transitions):
+    """ Computes the next global states given current global states and local transitions."""
+    # global_states: [A, 3]
+    # local_transitions: [A, 3] 
+    # returns: next state in global frame: [A, 3]
+    
+    # Extract components
+    x, y, heading = global_states[:, 0], global_states[:, 1], global_states[:, 2]
+    dx_local, dy_local, d_heading = local_transitions[:, 0], local_transitions[:, 1], local_transitions[:, 2]
+
+    # Compute the rotation matrix components
+    cos_heading = np.cos(heading)
+    sin_heading = np.sin(heading)
+
+    # Rotate local transitions to global frame (apply transition matrix)
+    dx_global = cos_heading * dx_local - sin_heading * dy_local
+    dy_global = sin_heading * dx_local + cos_heading * dy_local
+
+    # Apply the transitions
+    x_new = x + dx_global
+    y_new = y + dy_global
+    heading_new = normalize_angle(heading + d_heading)
+
+    # Combine into resulting global states
+    next_global_states = np.stack([x_new, y_new, heading_new], axis=-1)
+
+    return next_global_states
+
+
+def forward_k_disks(states, actions, vocab, delta_t, exists):
+    """ Computes next states given current states and k-disks actions."""
+    # current_state: [A, 3]
+    # state_transitions: [A, 3]
+    # returns: next state in global frame: [A, 3]
+    current_state = states[:, [0,1,4]]
+    next_actions = vocab[actions.astype(int)]
+    next_state_pos_heading = get_global_next_state(current_state, next_actions)
+    next_v = (next_state_pos_heading[:, :2] - current_state[:, :2]) / delta_t
+    next_exists = exists
+    next_state = np.array([next_state_pos_heading[:, 0], 
+                           next_state_pos_heading[:, 1],
+                           next_v[:, 0],
+                           next_v[:, 1],
+                           next_state_pos_heading[:, 2],
+                           states[:, 5],
+                           states[:, 6],
+                           next_exists]).transpose(1, 0)
+    
+    return next_state
+
+
+def inverse_k_disks(states, next_states, vocab):
+    """ Computes the k-disks action given current and next state."""
+    # 5:6 --> length, 6:7 --> width
+    corner_0_x = - 1 * states[5:6] / 2
+    corner_0_y = - 1 * states[6:7] / 2
+    corner_1_x = - 1 * states[5:6] / 2
+    corner_1_y = states[6:7] / 2
+    corner_2_x = states[5:6] / 2
+    corner_2_y = states[6:7] / 2
+    corner_3_x = states[5:6] / 2
+    corner_3_y = -1 * states[6:7] / 2
+
+    box_corners = np.array([
+        [corner_0_x, corner_0_y],
+        [corner_1_x, corner_1_y],
+        [corner_2_x, corner_2_y],
+        [corner_3_x, corner_3_y]
+    ]).transpose(2, 0, 1)
+
+    # box_corners: [A, 4, 2]
+    # V: [384, 3]
+    # returns: transformed_box_corners: [A, 384, 4, 2]
+    box_corners_vocab = transform_box_corners_from_vocab(box_corners, vocab)
+
+    current_state = states[None, [0,1,4]]
+    gt_next_state = next_states[None, [0,1,4]]
+    local_state_transitions = get_local_state_transition(current_state=current_state, next_state=gt_next_state)
+
+    # box_corners: [A, 4, 2]
+    # local_state_transitions: [A, 3]
+    # returns: transformed_box_corners: [A, 4, 2]
+    box_corners_local_state = transform_box_corners_from_local_state(box_corners, local_state_transitions)
+
+    err = np.linalg.norm(box_corners_vocab - box_corners_local_state[:, None, :, :], axis=-1).mean(2)
+    action = np.argmin(err, axis=1)
+
+    # [1,]
+    return action
+
+def forward_k_disks_continuous(
+    states: np.ndarray,
+    actions_continuous: np.ndarray,
+    delta_t: float,
+    exists: np.ndarray,
+) -> np.ndarray:
+    """Forward kinematics using continuous actions (dx, dy, dtheta in body frame).
+    
+    This is the continuous-action version of forward_k_disks, used when
+    residual refinement is enabled.
+    
+    Args:
+        states: [A, 8] current agent states (pos_x, pos_y, vel_x, vel_y, heading, length, width, existence)
+        actions_continuous: [A, 3] continuous actions (dx, dy, dtheta) in body frame
+        delta_t: time step duration
+        exists: [A] boolean mask of active agents
+        
+    Returns:
+        next_states: [A, 8] next agent states
+    """
+    num_agents = states.shape[0]
+    next_states = np.zeros_like(states)
+    
+    # Copy static attributes
+    next_states[:, 5:7] = states[:, 5:7]  # length, width
+    
+    for a in range(num_agents):
+        if not exists[a]:
+            next_states[a] = states[a]
+            continue
+        
+        # Current state
+        x, y = states[a, 0], states[a, 1]
+        theta = states[a, 4]
+        
+        # Action in body frame
+        dx_body = actions_continuous[a, 0]
+        dy_body = actions_continuous[a, 1]
+        dtheta = actions_continuous[a, 2]
+        
+        # Transform to global frame
+        cos_theta = np.cos(theta)
+        sin_theta = np.sin(theta)
+        dx_global = cos_theta * dx_body - sin_theta * dy_body
+        dy_global = sin_theta * dx_body + cos_theta * dy_body
+        
+        # New state
+        new_x = x + dx_global
+        new_y = y + dy_global
+        new_theta = theta + dtheta
+        
+        # Normalize heading to [-pi, pi]
+        new_theta = np.arctan2(np.sin(new_theta), np.cos(new_theta))
+        
+        # Velocity from displacement
+        new_vx = dx_global / delta_t
+        new_vy = dy_global / delta_t
+        
+        next_states[a, 0] = new_x
+        next_states[a, 1] = new_y
+        next_states[a, 2] = new_vx
+        next_states[a, 3] = new_vy
+        next_states[a, 4] = new_theta
+        next_states[a, 7] = 1.0  # existence
+    
+    return next_states

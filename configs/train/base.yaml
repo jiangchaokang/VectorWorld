@@ -1,0 +1,31 @@
+### training configurations
+seed: 0 # training seed for reproducibility
+save_dir: outputs/checkpoints/ # directory to save checkpoints/log files
+run_name: null # name of saved directory for run
+wandb_project: scenario-dreamer # wandb project
+wandb_entity: null # wandb entity
+track: False # track to wandb
+accelerator: auto # pytorch lightning accelerator
+devices: null # number of gpus - set to 4 when multi-gpu training
+precision: 32-true # bf16-mixed for bfloat16 mixed precision or 32-true for regular
+check_val_every_n_epoch: 3 # interval at which we eval on val set
+limit_train_batches: 1.0 # proportion of training batches used (reduce for easier debugging)
+limit_val_batches: 1.0 # proportion of validation batches used (reduce for easier debugging)
+num_samples_to_visualize: null # number of samples to visualize in each epoch of training
+viz_dir: null # directory to save visualizations
+
+### optimizer configurations
+max_steps: null # number of training steps
+warmup_steps: null  # linear lr warmup over warmup_steps steps
+lr_schedule: null # linear or constant
+lr: 1e-4 # initial lr
+beta_1: 0.9 # following SceneControl
+beta_2: 0.999 # following SceneControl
+epsilon: 10e-8 # following SceneControl
+weight_decay: 1e-5 # following SceneControl
+gradient_clip_val: 10.0
+
+### loss function configurations
+loss_type: l2 # l2 loss on vectorized elements
+lane_weight: 10 # weight of lane regression loss
+lane_conn_weight: 0.1 # weight of lane connectivity loss

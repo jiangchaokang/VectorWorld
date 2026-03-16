@@ -1,0 +1,13 @@
+defaults:
+- nuplan_base
+
+train_batch_size: 128
+val_batch_size: 128
+dataset_cfg: null
+
+# SLEDGEPreprocessed nuPlan data (if nuPlan is used)
+sledge_raw_dataset_path: data/nuplan/scenario_dreamer_nuplan/sledge_raw
+map_id_dataset_path: data/nuplan/scenario_dreamer_nuplan/map_id
+preprocess: True
+preprocess_dir: data/nuplan/scenario_dreamer_ae_preprocess_nuplan
+remove_left_right_connections: True

@@ -1,0 +1,7 @@
+defaults:
+- egr_dit
+
+# architecture parameters
+autoencoder_run_name: vae_nuplan
+autoencoder_path: data/ckpt/vae_nuplan/last.ckpt
+agent_latent_dim: 8

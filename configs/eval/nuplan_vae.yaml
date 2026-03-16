@@ -1,0 +1,46 @@
+defaults:
+- base
+
+run_name: scenario_dreamer_autoencoder_nuplan # default run name for evaluation
+accelerator: gpu  # 'gpu' / 'cpu' / 'auto'
+devices: 1
+
+# ---------------------------------------------------------------------
+# Visually related
+# ---------------------------------------------------------------------
+num_samples_to_visualize: 6
+visualize_compare_gt: False
+visualize_lane_graph: False
+# Motion Visualized Style: 'curve' boxes' both'
+motion_viz_mode: boxes
+motion_num_history_boxes: 0
+viz_dir: outputs/viz/eval_${ae.eval.run_name}
+metrics_save_path: null
+
+# Assessment model:
+#   - "Metrics": Call AEMotionMetrics (motion code only)
+#   - "initial_scene": use AE to recreate the data set and drop the results as pkl
+#                       Available afterLDM♪ Metrics do offlineLane/Agent/MotionAssessment
+#   - Other: Call Lightingtest(), output only loss / visualize / cache
+mode: metrics
+
+ckpt_path: outputs/checkpoints/scenario_dreamer_autoencoder_nuplan/last.ckpt
+split_name: val         # [train | val | test]
+batch_size: 64
+num_samples: null
+eval_set: null
+
+cache_latents:
+  enable_caching: False
+  split_name: train
+  latent_dir: /workspace/share-per1/jca3sgh/vectorworld/datasets/nuplan/sd_ae_large_latents
+  nocturne_train_filenames_path: data/metadata/nocturne_train_filenames.pkl
+  nocturne_val_filenames_path:   data/metadata/nocturne_val_filenames.pkl
+  save_to_cos: False          # True=>Sync Upload toCOS
+  save_local_copy: True       # False = > Leave Local Latient.pkl
+  cos_secret_id: ${oc.env:VECTORWORLD_COS_SECRET_ID,""}
+  cos_secret_key: ${oc.env:VECTORWORLD_COS_SECRET_KEY,""}
+  cos_bucket: ${oc.env:VECTORWORLD_COS_BUCKET,""}
+  cos_prefix: ${oc.env:VECTORWORLD_COS_PREFIX,""}
+  num_shards: 1
+  shard_id: 0

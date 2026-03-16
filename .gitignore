@@ -1,0 +1,12 @@
+slurm_logs/
+*.out
+__pycache__/
+*/__pycache__/
+lightning_logs/
+viz_*/
+
+outputs/*
+outputs
+
+/data
+/metadata

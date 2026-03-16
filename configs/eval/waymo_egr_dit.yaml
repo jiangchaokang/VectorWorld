@@ -1,0 +1,58 @@
+defaults:
+- base
+
+run_name: scenario_dreamer_ldm_base_waymo
+
+mode: initial_scene    # or lane_conditioned or inpainting or metrics or simulation_environments
+num_samples: 100
+init_prob_matrix_path: data/metadata/initial_prob_matrix_waymo.pt
+inpainting_prob_matrix_path: data/metadata/inpainting_prob_matrix_waymo.pt
+batch_size: 32
+visualize: False
+viz_dir: outputs/viz/gen_samples_${ldm.eval.run_name}
+cache_samples: False
+conditioning_path: null
+ckpt_path: null
+
+# MeanFlow-LDM: Number of steps used in reasoning (1 One)-Step;2/3/5 Few-StepI'm not sure how to do it.
+# The field is ignored for the diffusion / fly type model.
+meanflow_num_steps: 1
+split_name: val
+
+sim_envs:
+  num_inpainting_candidates: 12
+  overhead_factor: 10
+  route_length: 500
+  nocturne_compatible_only: True
+  viz_dir: outputs/viz/sim_envs_${ldm.eval.run_name}
+  web_export:
+    enabled: false
+    out_dir: outputs/checkpoints/${ldm.eval.run_name}/web_sim_envs
+    lane_width_m: 4.2
+    route_every_m: 1.0
+    drop_self_edges: true
+
+metrics:
+  samples_path: outputs/checkpoints/${ldm.eval.run_name}/initial_scene_samples
+  metrics_save_path: outputs/checkpoints/${ldm.eval.run_name}
+  eval_set: data/metadata/waymo_eval_set.pkl
+  gt_agent_test_dir: null
+  gt_lane_test_dir: null
+  gt_test_dir: /workspace/share-per1/jca3sgh/vectorworld/datasets/waymo/sd_ae_motion_preprocess/test
+  num_samples: null
+
+denoise_viz:
+  save_video: False
+  fps: 5
+  max_frames: 0
+  num_samples: 8
+  sample_indices: null # [0,1,2,3,4,5,6,7]
+  viz_history: True
+  append_replay: True
+  motion_viz_mode: curve
+  hud:
+    show_timing: False
+    fontsize: 20
+  replay:
+    interp: 5
+    use_path_heading: true

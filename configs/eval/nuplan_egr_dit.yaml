@@ -1,0 +1,29 @@
+defaults:
+- base
+
+run_name: scenario_dreamer_ldm_base_nuplan
+
+mode: initial_scene    # or lane_conditioned or inpainting or metrics or simulation_environments
+num_samples: 100
+init_prob_matrix_path: data/metadata/initial_prob_matrix_nuplan.pt
+inpainting_prob_matrix_path: data/metadata/inpainting_prob_matrix_nuplan.pt
+batch_size: 32
+visualize: False
+viz_dir: outputs/viz/gen_samples_${ldm.eval.run_name}
+cache_samples: False
+conditioning_path: null
+ckpt_path: null
+meanflow_num_steps: 1
+split_name: val
+
+sim_envs:
+  num_inpainting_candidates: 8
+  overhead_factor: 10
+  route_length: 500
+
+metrics:
+  samples_path: outputs/checkpoints/${ldm.eval.run_name}/initial_scene_samples
+  metrics_save_path: outputs/checkpoints/${ldm.eval.run_name}
+  eval_set: data/metadata/nuplan_eval_set.pkl
+  gt_agent_test_dir: data/nuplan/scenario_dreamer_ae_preprocess_nuplan/test
+  gt_lane_test_dir: data/nuplan/scenario_dreamer_nuplan/sledge_raw/test

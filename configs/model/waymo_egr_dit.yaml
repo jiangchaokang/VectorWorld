@@ -1,0 +1,6 @@
+defaults:
+- egr_dit
+
+# architecture parameters
+autoencoder_run_name: scenario_dreamer_autoencoder_waymo
+autoencoder_path: outputs/checkpoints/sd_ae_waymo_motion_large/last.ckpt

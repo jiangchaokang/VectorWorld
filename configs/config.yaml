@@ -1,0 +1,74 @@
+scratch_root: ${oc.env:SCRATCH_ROOT}
+dataset_root: ${oc.env:DATASET_ROOT}
+project_root: ${oc.env:PROJECT_ROOT}
+
+# Preprocessed data paths
+vae_preprocess_waymo_dir: ${scratch_root}/datasets/waymo/vae_motion_latents
+
+# NuPlan paths
+vae_preprocess_nuplan_dir: data/nuplan/vae_preprocess
+nuplan_lane_preprocess_dir: data/nuplan/sledge_raw # ref https://github.com/autonomousvision/sledge/blob/main/docs/installation.md
+
+# Waymo raw data  It is essential to specify the path to waymo_open_dataset_motion_v_1_1_0 here.
+waymo_train_folder: data/waymo/training
+waymo_val_folder: data/waymo/validation
+waymo_test_folder: data/waymo/testing
+
+hydra:
+  run:
+    dir: outputs/hydra/${now:%Y.%m.%d}/${now:%H.%M.%S}
+  job:
+    chdir: false
+
+# Preprocessing config
+generate_waymo_dataset:
+  output_data_folder_train: data/vectorworld_waymo/train
+  output_data_folder_val: data/vectorworld_waymo/val
+  output_data_folder_test: data/vectorworld_waymo/test
+  num_workers: 20
+  mode: train
+  chunk_idx: -1
+  chunk_size: 50
+
+preprocess_waymo:
+  stage: vae
+  num_workers: 10
+  mode: train
+  chunk_idx: -1
+  chunk_size: 50000
+
+preprocess_nuplan:
+  num_workers: 10
+  mode: train
+  chunk_idx: -1
+  chunk_size: 50000
+
+postprocess_sim_envs:
+  run_name: egr_dit_${dataset_name.name}
+  pre_path: ${scratch_root}/checkpoints/${postprocess_sim_envs.run_name}/complete_sim_envs
+  post_path: ${project_root}/data/metadata/sim_envs/vectorworld_${dataset_name.name}_${postprocess_sim_envs.route_length}m
+  route_length: 200
+
+model_name: vae  # vae | ldm | deltasim
+
+defaults:
+  - _self_
+  - dataset_name: waymo
+  # VAE configs
+  - dataset@ae.dataset: ${dataset_name}_vae
+  - train@ae.train: ${dataset_name}_vae
+  - eval@ae.eval: ${dataset_name}_vae
+  - model@ae.model: ${dataset_name}_vae
+  - datamodule@ae.datamodule: ${dataset_name}_vae
+  # EGR-DiT / LDM configs
+  - dataset@ldm.dataset: ${dataset_name}_ldm
+  - train@ldm.train: ${dataset_name}_egr_dit
+  - eval@ldm.eval: ${dataset_name}_egr_dit
+  - model@ldm.model: ${dataset_name}_egr_dit
+  - datamodule@ldm.datamodule: ${dataset_name}_ldm
+  # DeltaSim configs
+  - dataset@deltasim.dataset: ${dataset_name}_deltasim
+  - train@deltasim.train: ${dataset_name}_deltasim
+  - model@deltasim.model: ${dataset_name}_deltasim
+  - datamodule@deltasim.datamodule: ${dataset_name}_deltasim
+  - sim: base

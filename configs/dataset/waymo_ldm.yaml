@@ -1,0 +1,11 @@
+defaults:
+- waymo_base
+
+dataset_path: /workspace/share-per1/jca3sgh/vectorworld/datasets/waymo/sd_ae_large_motion_latents
+filelist_dir: /workspace/share-per1/jca3sgh/vectorworld/datasets/waymo/sd_ae_large_motion_latents/filelists
+latent_stats_dir: metadata/latent_stats
+latent_stats_path: metadata/latent_stats/sd_ae_waymo_motion.pkl # TODO sd_ae_waymo_motion scenario_dreamer_autoencoder_waymo
+agent_latents_mean: null
+agent_latents_std: null
+lane_latents_mean: null
+lane_latents_std: null

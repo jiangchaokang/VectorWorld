@@ -1,0 +1,119 @@
+seed: 0 # random seed for reproducibility
+mode: vectorworld # waymo_ctrl_sim and waymo_log_replay to be supported in the future
+dataset_path: ${project_root}/data/metadata/simulation_environment_datasets/scenario_dreamer_waymo_200m # path to set of simulation environments
+policy: idm # or rl (policy being evaluated. Currently only idm is supported)
+visualize: False # create videos of the simulation?
+lightweight: False # lightweight visualization (runs faster, less dpi and lower frame rate)
+movie_path: ${project_root}/movies # path to save visualization movies
+verbose: True # report metrics after each simulation?
+steps: 400 # number of steps in each simulation
+dt: 0.1 # time delta between simulation steps
+
+# Whether the complete simulation trajectory (scenario_dict + data_dict) should be dropped as pkl
+save_trajectory: False # set True to dump one pkl per episode
+trajectory_path: ${project_root}/sim_traces/offline # directory to save trajectory pickles
+
+# Number of multiprocesses working in parallel (only)run_simulation_parallel.pyused)
+num_workers: 1
+
+simulate_vehicles_only: False # whether to simulate only vehicles (default is to simulate all agents (vehicles + pedestrians + cyclists))
+
+behaviour_model:
+  run_name: ctrl_sim_waymo_1M_steps
+  tilt: 10
+  action_temperature: 1.0
+  use_rtg: True
+  predict_rtgs: True
+  compute_metrics: False
+  init_history_from_motion: False
+  history_from_motion_num_points: 6
+  
+  amp:
+    enabled: true
+    dtype: bf16  # bf16 | fp16
+  # Motion History Speed Control Switch (for reconstructing fake history from agent_motion)
+  motion_history:
+    speed_mode: clamped
+    speed_scale: 1.0
+    min_speed: 0.0
+    max_speed: 30.0
+    max_scale: 2.0
+  
+  # New: configuration overwrite
+  inference:
+    residual_refine:
+      enabled: true
+      use_refine_in_eval: true
+      refine_scale: 1.0
+    
+    collision_avoidance:
+      enabled: true
+      beta: 2.0
+      margin: 0.2
+      min_dist_clip: 0.05
+    
+    rtg_inference:
+      mode: one_pass_like
+  
+  variant: ours
+  ckpt:
+    ours: metadata/checkpoints/waymo/delta_sim/epoch41_step79884.ckpt
+    baseline: data/ckpt/ctrl_sim_waymo_1M_steps/last.ckpt
+  model_path: ${.ckpt.${.variant}}
+
+# --- NEW: online/new-agent filtering heuristics as config (reproducible) ---
+new_agent_filter:
+  dist_gap_s: 5.0
+  heading_threshold: 0.5235987755982988  # pi/6
+  dist_threshold: 2.0
+
+# -----------------------------------------------------------------------------
+# NEW: Save aggregated simulation metrics (for paper tables)
+# If null => do not save.
+# If dir => will save "sim_metrics_<mode>_seed<seed>.json" under that dir.
+# If file path ends with .json => save exactly there.
+# -----------------------------------------------------------------------------
+metrics_save_path: null
+
+# -----------------------------------------------------------------------------
+# NEW: Benchmark behaviour model forward-only latency/memory/params
+# -----------------------------------------------------------------------------
+bench:
+  enabled: false
+  target: ctrl_sim_forward
+  batch_size: 8
+  num_warmup: 20
+  num_iters: 200
+  verbose: true
+  amp:
+    enabled: true
+    dtype: bf16
+  save_path: null
+
+eval_metrics:
+  enabled: true
+  report_ci: false  # set true to add *_ci95 fields (slower + more keys)
+
+  warmstart:
+    enabled: true
+
+  dynamics:
+    enabled: true
+
+  physics:
+    enabled: true
+    # threshold source: prefer model (from ckpt phys_prior defaults), can override below
+    apply_to: vehicle
+    yaw_rate_max: null
+    arc_res_max: null
+    kappa_max: null
+    a_lat_max: null
+    a_long_max: null
+    reverse_allow: null
+
+  safety:
+    enabled: true
+    apply_to: vehicle
+    ttc_threshold_s: 1.5
+    dist_threshold_m: 1.0
+    ttc_margin_m: 0.2

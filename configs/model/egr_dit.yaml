@@ -1,0 +1,168 @@
+# architecture parameters
+autoencoder_run_name: null # Name of the autoencoder run
+autoencoder_path: outputs/checkpoints/scenario_dreamer_autoencoder_nuplan/last.ckpt       # Path to the pre-trained autoencoder checkpoint
+hidden_dim: 2048            # Hidden layer dimension for lane embeddings
+num_heads: 16               # Number of attention heads for *_to_lane attention layers
+agent_hidden_dim: 512       # Hidden layer dimension for agent embeddings
+agent_num_heads: 8          # Number of attention heads for *_to_agent attention layers
+num_factorized_dit_blocks: 2 # Number of factorized DiT blocks
+lane_latent_dim: 24         # Dimension of autoencoder lane latents
+
+# Align with AE: 18 dimensions
+agent_latent_dim: 18        # Dimension of autoencoder agent latents
+
+dropout: 0                  # dropout rate
+label_dropout: 0.1          # Dropout rate for labels for training (to enable classifier-free guidance at inference)
+num_l2l_blocks: 3           # Number of lane-to-lane blocks in each factorized DiT block
+
+# ---------------- LDM variant: diffusion vs flow vs meanflow ----------------
+#   - diffusion : DDPM-style latent diffusion
+#   - flow      : Rectified Flow (Flow Matching) with ODE solver
+#   - I mean, I don't know.JVP& Shortcut 2 training modules)
+ldm_type: meanflow
+
+# Diffusion-specific
+n_diffusion_timesteps: 100
+lane_sampling_temperature: 0.75
+diffusion_clip: 5
+
+# FlowLDM-specific
+flow_num_steps: 24
+flow_solver: heun
+
+# ---------------- MeanFlowLDM-specific --------------------------------------
+# Design description:
+#   - meanflow_training_mode:
+#       * "IDENTITY": v using **Improved Mean Blows**-reparam + JVPObjective (recommended)
+#                       Specific formula:
+#                           v_gt = e - x
+#                           v (z_t, t) = (z_t, r=t, t) (border conditions)
+#                           V_θ(z_t)      = u_θ(z_t, r, t) + (t-r) d/ dt u_θ(z_t,r,t)
+#                           L            = || V_θ(z_t) - v_gt ||^2
+#       * "Shortcut": use old Shortcut-MeanFlow(Flow+EndPoint+SelfConsistency, none)JVPI'm not sure how to do it.
+#   - meanflow_enable_jvp:
+#       *True: enabled in idency modeJVP;
+#       * False: Even trading_mode= "identity" returns automatically to "shortcut" training and sampling.
+#
+#   - In IDity mode:
+#       * Path: z_t = (1-t) *x_data + t *eps (Rectified Blow, data noise)
+#       :: Target: v_gt=eps-x
+#       * Complex function: Vu (t)-r) JVP_sg(u_θ; v_θ)I'm not sure what you're doing.
+#                 of which vu (., r=t, t), JVP_sg for d/ dt u stop gradient.
+#       * (t,r) Sample: logit-normal+ meanslow_tr_ratio controls rt,
+#                 and visible sample part (r=0,t=1) to overwrite 1-stepCase.
+#       :: Self-adaptation weights: meanflow_loss_p, meanlow_loss_c
+#
+#   - In shortcut mode:
+#       * Keep your currentlow+Endpoint+Self-ConsistencyTraining;
+#       *Few sampled from t=0/1-stepEuler(x_{k+1}= x_k + d* s_s.
+meanflow_training_mode: identity   # [identity | shortcut]
+meanflow_enable_jvp: true          # If pp does not supportJVP, set false to self-refund to Shortcut
+
+# 1) Whether to enable a two-time channel (t, h):
+#    - Not valid for diffusion / fly;
+#    - Well, suggest true, then:
+#        *t: Current time;
+#        * h: t-r (time interval t, used to distinguish average velocity across different scales).
+meanflow_use_two_times: true
+meanflow_r_variant: full      # Compatible place (old)PDEOperation), currently not visible
+
+# (t,r) Logit-NormalSample Parameters
+#    Remember:
+#       t ~ LogitNormal(meanflow_time_mu_t or meanflow_time_mu,
+#                       meanflow_time_sigma_t or meanflow_time_sigma)
+#       r ~ LogitNormal(meanflow_time_mu_r or meanflow_time_mu,
+#                       meanflow_time_sigma_r or meanflow_time_sigma)
+#    And then do the reprocessing according to the meanlow_tr_sampler / meanlow_tr_ratio.
+meanflow_time_mu: -0.4
+meanflow_time_sigma: 1.0
+meanflow_time_mu_t: null       # If it's null, return to meanlow_time_mu
+meanflow_time_sigma_t: null
+meanflow_time_mu_r: null
+meanflow_time_sigma_r: null
+
+# (t,r) Joint sampler version:
+#   - "v0": make sure t>=r, then randomly set a portion of the sample as r=t (FlowMatching case);
+#   - "v1": press the ratio to process r=t, then make sure t> =r.
+meanflow_tr_sampler: v0       # "v0" or "v1"
+
+#   **rt** in training (ratio in the essay).
+#       * 0 all r=t (degradation tolowMatching, MeanFlow not in force);
+#       *1 all rt;
+#       *0.25 The best effect in the MeanFlow thesis is set here as default.
+meanflow_tr_ratio: 0.25
+
+# 3) Self-adaptation weighted L2
+#    - The paper is medium-priced.{2γ};
+#    - Use weight w = 1 / (loss_node + c)p where loss_node = 0.5 *2;
+#      p = 1 - gamma, corresponding to super-spinning in paper.
+#    - It's recommended that P=0.5 be used first (Pseudo).-Huber, or try p=0.
+meanflow_loss_p: 0.8         # p=0 Standard L2; p1 works better on ImageNet
+meanflow_loss_c: 1e-3
+
+# 4) Default steps in reasoning (may beldm.eval.meanflow_num_stepsoverwrite)
+#    -Identity mode: K Step Application z_t_{i+1}} = z_{t_i} - (t_i - t_{i+1}) u(z_{t_i}, t_{i+1}, t_i)
+#    - Shortcut mode: K Step Euler from t=0:1.
+meanflow_num_steps_eval: 1
+
+# 5) Shortcut-MeanFlowPertinent super-simulation (effective only when trading_mode="shortcut" or enable_jvp=False)
+meanflow_shortcut_sc_ratio: 0.15
+meanflow_shortcut_flow_weight: 0.5
+meanflow_shortcut_end_weight: 1.0
+meanflow_shortcut_warmup_steps: 3000
+
+# 6) OldPDE/ Distillation interface (compatible with retention, ignored in new realization)
+meanflow_distill_from_flow: false
+meanflow_distill_teacher_ckpt: null
+meanflow_pde_weight: 0.2                   # Explain in Shortcut mode Self-ConsistencyWeights.
+meanflow_distill_weight: 0.0               # Abandoned: disSIll loss no longer counted
+
+# ---------------- Flow-GRPO RL hyper-parameters ----------------
+flow_grpo:
+  group_size: 8
+  num_contexts_per_batch: 8
+  n_steps_train: 12
+  sde_noise_a: 0.6
+  clip_eps: 0.2
+  kl_coef: 0.02
+  rl_lr: 8e-6
+  max_updates: 8000
+  log_interval: 100
+  save_interval: 2000
+  max_grad_norm: 1.0
+  update_old_every: 1
+  min_adv_std: 1e-3
+  adv_clip: 5.0
+  max_log_ratio_abs: 5.0
+
+
+# ============================================================================
+# NEW: Relation-aware DiT Architecture (v2)
+# ============================================================================
+# These features are designed to improve relationship/edge distribution metrics
+# (Topology: Conn/Reach/Conv, Agent JSD: Near/Lat/Ang)
+
+# ---------------- Edge-aware Attention ----------------
+# Enable pairwise relational bias in l2l and a2a attention
+# This adds explicit modeling of node relationships
+use_rel_bias: false  # Set to true to enable (default: false for backward compatibility)
+
+# Low-dimensional projection for edge features (memory efficient)
+lane_rel_dim: 64     # Projection dim for lane nodes
+agent_rel_dim: 32    # Projection dim for agent nodes
+edge_dim: 32         # Edge feature dimension
+
+# ---------------- Global Context Fusion ----------------
+# Enable scene-level global pooling to capture overall statistics
+# Helps with Reach/Convenience metrics
+use_gcf: false       # Set to true to enable (default: false for backward compatibility)
+
+# ---------------- Stability Improvements ----------------
+# LayerNorm on Q/K for stable attention (recommended)
+qk_norm: false       # Set to true to enable
+
+# Clip attention logits to prevent extreme softmax values
+attn_logit_clip: null  # Set to e.g. 30.0 to enable (null = disabled)
+use_cross_rel_bias: false
+gcf_var_scale: 0.15
+use_rel_gate: true

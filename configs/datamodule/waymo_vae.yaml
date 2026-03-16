@@ -1,0 +1,8 @@
+defaults:
+- base
+
+_target_: vectorworld.data.datamodules.WaymoDataModuleAutoEncoder
+train_batch_size: 64
+val_batch_size: 64
+dataset_cfg: null
+
