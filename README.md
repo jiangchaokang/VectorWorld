@@ -31,7 +31,7 @@
   <a href="https://huggingface.co/datasets/Jck1998/vectorworld">
     <img src="https://img.shields.io/badge/Hugging%20Face-Checkpoints-FFD21E?style=flat-square&logo=huggingface&logoColor=black" alt="Hugging Face"/>
   </a>
-  <a href="assets/mp4/ken_burns_mosaic.mp4">
+  <a href="assets/mp4/demo.gif">
     <img src="https://img.shields.io/badge/Demo-Video-FF4B4B?style=flat-square&logo=youtube&logoColor=white" alt="Demo Video"/>
   </a>
 </p>
@@ -65,9 +65,9 @@ Driving scenes are represented as structured vector graphs comprising lanes, age
 | Date | Update |
 |:---|:---|
 | **2026/03/18** | Model checkpoints released on [Hugging Face](https://huggingface.co/datasets/Jck1998/vectorworld). |
-| **YYYY/MM/DD** | Project page is live. |
-| **YYYY/MM/DD** | Initial code release. |
-| **YYYY/MM/DD** | Paper released on [arXiv](https://arxiv.org/abs/2501.00000). |
+| **2026/03/18** | Project page is live. [Project page](https://your-project-page.example.com). |
+| **2026/03/16** | Initial code release. |
+| **2026/03/20** | Paper released on [arXiv](https://arxiv.org/abs/2501.00000). |
 
 ---
 
