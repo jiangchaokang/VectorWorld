@@ -44,19 +44,20 @@
 
 ## Overview
 
-**VectorWorld** is a streaming, fully vectorized world model for autonomous-driving simulation. It incrementally generates ego-centric 64 m × 64 m lane–agent graph tiles during rollout, avoiding the mismatch of history-free initialization and the latency of multi-step sampling. By combining a motion-aware gated VAE, a one-step edge-gated relational generator (EGR-DiT), and DeltaSim for physics-aligned NPC control, VectorWorld improves initialization validity and map-structure fidelity while enabling stable, real-time 1 km+ closed-loop rollouts on [Waymo Open Motion](https://waymo.com/open/) and [nuPlan](https://www.nuscenes.org/nuplan).
+**VectorWorld** is a streaming, fully vectorized world model for closed-loop autonomous driving simulation. It incrementally outpaints ego-centric **64 m × 64 m** lane–agent graph tiles during rollout, enabling history-conditioned policies to interact beyond recorded horizons while preserving structured map–agent relations.
 
-Driving scenes are represented as structured vector graphs comprising lanes, agents, and motion codes. Closed-loop NPC simulation is supported through a hybrid discrete–continuous behavior policy. The overall pipeline proceeds from raw-log extraction, through VAE encoding and latent caching, to EGR-DiT training and streaming environment generation, followed by DeltaSim-based closed-loop evaluation.
+The system combines three core components: a **motion-aware gated VAE** for policy-compatible warm starts, an **edge-gated relational DiT (EGR-DiT)** with **interval-conditioned MeanFlow** and **JVP-based supervision** for solver-free one-step generation, and **DeltaSim (∆Sim)** for physics-aligned NPC control. On [Waymo Open Motion](https://waymo.com/open/) and [nuPlan](https://www.nuscenes.org/nuplan), VectorWorld achieves stable **1 km+** closed-loop rollouts at **~6 ms per tile** with improved initialization validity and map fidelity.
 
 ---
 
 ## Highlights
 
-- 🚗 **Streaming generation** — incremental tile-based rollout for unbounded-length driving environments
-- 🧩 **Fully vectorized** — compact graph representation of lanes, agents, and motion codes with no rasterization
-- ⚡ **One-step synthesis** — MeanFlow-based single-step generation enables real-time simulation
-- 🔁 **Closed-loop NPC control** — DeltaSim with discrete anchor actions and continuous residual refinement
-- 📊 **Multi-dataset support** — validated on Waymo Open Motion Dataset v1.1.0 and nuPlan
+- 🚗 **Streaming vector synthesis** — outpaints **64 m × 64 m** lane–agent graph tiles on demand for kilometer-scale closed-loop simulation without rasterization
+- 🧠 **Motion-aware warm starts** — gated VAE encodes compact history into interaction states, reducing cold-start mismatch
+- 🧩 **Relation-aware generation** — EGR-DiT preserves lane topology and lane–agent consistency via edge-conditioned attention
+- ⚡ **Real-time one-step inference** — interval-conditioned MeanFlow + JVP supervision enables solver-free completion at **~6 ms per tile**
+- 🔁 **Physics-aligned control** — ∆Sim uses hybrid actions with differentiable kinematic shaping for stable multi-agent rollout
+- 📊 **Strong performance** — stable **1 km+** rollouts on Waymo/nuPlan, doubles stress-test policy success to **56.0%**
 
 ---
 
@@ -64,9 +65,9 @@ Driving scenes are represented as structured vector graphs comprising lanes, age
 
 | Date | Update |
 |:---|:---|
+| **2026/03/16** | Initial code release. |
 | **2026/03/18** | Model checkpoints released on [Hugging Face](https://huggingface.co/datasets/Jck1998/vectorworld). |
 | **2026/03/18** | Project page is live. [Project page](https://your-project-page.example.com). |
-| **2026/03/16** | Initial code release. |
 | **2026/03/20** | Paper released on [arXiv](https://arxiv.org/abs/2501.00000). |
 
 ---
