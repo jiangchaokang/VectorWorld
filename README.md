@@ -52,12 +52,12 @@ The system combines three core components: a **motion-aware gated VAE** for poli
 
 ## Highlights
 
-- 🚗 **Streaming vector synthesis** — outpaints **64 m × 64 m** lane–agent graph tiles on demand for kilometer-scale closed-loop simulation without rasterization
-- 🧠 **Motion-aware warm starts** — gated VAE encodes compact history into interaction states, reducing cold-start mismatch
-- 🧩 **Relation-aware generation** — EGR-DiT preserves lane topology and lane–agent consistency via edge-conditioned attention
-- ⚡ **Real-time one-step inference** — interval-conditioned MeanFlow + JVP supervision enables solver-free completion at **~6 ms per tile**
-- 🔁 **Physics-aligned control** — ∆Sim uses hybrid actions with differentiable kinematic shaping for stable multi-agent rollout
-- 📊 **Strong performance** — stable **1 km+** rollouts on Waymo/nuPlan, doubles stress-test policy success to **56.0%**
+- 🚗 **Streaming vector generation** — raster-free km-scale closed-loop simulation
+- 🧠 **Motion-aware warm starts** — reduced cold-start mismatch
+- 🧩 **Relation-aware generation** — EGR-DiT preserves lane topology and lane–agent consistency
+- ⚡ **Real-time one-step inference** — solver-free completion at **~6 ms per tile**
+- 🔁 **Physics-aligned control** — ∆Sim uses hybrid actions for stable multi-agent rollout
+- 📊 **Strong performance** — 1 km+ rollouts and 56.0% stress-test success
 
 ---
 
