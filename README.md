@@ -22,7 +22,7 @@
 
 <!-- TODO: replace placeholder URLs before public release -->
 <p align="center">
-  <a href="https://your-project-page.example.com">
+  <a href="https://jiangchaokang.github.io/VectorWorld">
     <img src="https://img.shields.io/badge/Project-Page-2D7FF9?style=flat-square&logo=googlechrome&logoColor=white" alt="Project Page"/>
   </a>
   <a href="https://arxiv.org/abs/2501.00000">
@@ -67,7 +67,7 @@ The system combines three core components: a **motion-aware gated VAE** for poli
 |:---|:---|
 | **2026/03/16** | Initial code release. |
 | **2026/03/18** | Model checkpoints released on [Hugging Face](https://huggingface.co/datasets/Jck1998/vectorworld). |
-| **2026/03/18** | Project page is live. [Project page](https://your-project-page.example.com). |
+| **2026/03/18** | Project page is live. [Project page](https://jiangchaokang.github.io/VectorWorld). |
 | **2026/03/20** | Paper released on [arXiv](https://arxiv.org/abs/2501.00000). |
 
 ---
