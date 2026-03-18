@@ -11,7 +11,7 @@
 
 <p align="center">
   <a href="https://scholar.google.com/citations?user=6gZ8vloAAAAJ"><b>Chaokang Jiang</b></a><sup>1</sup>&nbsp;&nbsp;
-  <a href="https://scholar.google.com/citations?user=Ux677B4AAAAJ&hl=en"><b>Deshen Zhou</b></a><sup>1</sup>&nbsp;&nbsp;
+  <a href="https://scholar.google.com/citations?user=Ux677B4AAAAJ&hl=en"><b>Desen Zhou</b></a><sup>1</sup>&nbsp;&nbsp;
   <a href="https://scholar.google.com/citations?user=j4YXCukAAAAJ"><b>Jiuming Liu</b></a><sup>2</sup>&nbsp;&nbsp;
   <a href="https://scholar.google.com/citations?user=JZViN_4AAAAJ"><b>Kevin Li Sun</b></a><sup>1</sup>
 </p>
@@ -402,7 +402,7 @@ If you find this work useful, please consider citing:
 ```bibtex
 @article{jiang2025vectorworld,
   title   = {VectorWorld: Efficient Streaming World Model via Diffusion Flow on Vector Graphs},
-  author  = {Jiang, Chaokang and Zhou, Deshen and Liu, Jiuming and Sun, Kevin Li},
+  author  = {Jiang, Chaokang and Zhou, Desen and Liu, Jiuming and Sun, Kevin Li},
   year    = {2025}
 }
 ```
