@@ -1,0 +1,470 @@
+---
+title: "VectorWorld: Efficient Streaming World Model via Diffusion Flow on Vector Graphs"
+authors:
+  - name: "Chaokang Jiang"
+    url: "https://scholar.google.com/citations?user=6gZ8vloAAAAJ&hl=en"
+    institution: "Bosch XC-CN"
+  - name: "Deshen Zhou"
+    url: "https://scholar.google.com/citations?user=Ux677B4AAAAJ&hl=en"
+    institution: "Bosch XC-CN"
+  - name: "Jiuming Liu"
+    url: "https://scholar.google.com/citations?user=j4YXCukAAAAJ&hl=en&oi=ao"
+    institution: "University of Cambridge"
+  - name: "Kevin Li Sun"
+    url: "https://scholar.google.com/citations?user=JZViN_4AAAAJ&hl=en"
+    institution: "Bosch XC-CN"
+theme: "device"
+favicon: "favicon.svg"
+description: "A streaming vector-graph world model that warm-starts history-conditioned policies, performs solver-free one-step frontier completion, and supports kilometer-scale closed-loop autonomous-driving rollout."
+links:
+  - name: "arXiv"
+    url: "https://arxiv.org/abs/XXXX.XXXXX"
+    icon: "academicons:arxiv"
+  - name: "GitHub"
+    url: "https://github.com/jiangchaokang/VectorWorld/tree/master"
+    icon: "simple-icons:github"
+  - name: "Hugging Face"
+    url: "https://huggingface.co/datasets/Jck1998/vectorworld"
+    icon: "simple-icons:huggingface"
+---
+
+import Video from "./components/Video.astro";
+import Wide from "./components/Wide.astro";
+
+import SectionHeading from "./components/vectorworld/SectionHeading.astro";
+import AnchorNav from "./components/vectorworld/AnchorNav.astro";
+import FigureBlock from "./components/vectorworld/FigureBlock.astro";
+import MethodScrollytelling from "./components/vectorworld/MethodScrollytelling.astro";
+import EfficiencyExplorer from "./components/vectorworld/EfficiencyExplorer.astro";
+import VectorSceneViewer from "./components/vectorworld/VectorSceneViewer.astro";
+import SurroundViewCaseSlider from "./components/vectorworld/SurroundViewCaseSlider.astro";
+
+import heroTeaser from "./assets/paper_material/Ken_Burns_Effect_Mosaic.mp4";
+import explanationVideo from "./assets/paper_material/Explanation_paper.mp4";
+import rollout1 from "./assets/paper_material/Long_Range_Rollout_Sim_Env1.mp4";
+import rollout2 from "./assets/paper_material/Long_Range_Rollout_Sim_Env2.mp4";
+
+import systemFigurePdf from "./assets/paper_material/VectorWorld_Sim_Engine_Vis.pdf";
+import qualitativeFigurePdf from "./assets/paper_material/viz_main_compare.pdf";
+import efficiencyFigurePdf from "./assets/paper_material/efficiency_quality_4panel_horizontal.pdf";
+
+export const navSections = [
+  { id: "overview", label: "Overview" },
+  { id: "video-overview", label: "Video" },
+  { id: "method", label: "Method" },
+  { id: "quality", label: "Quality" },
+  { id: "efficiency", label: "Efficiency" },
+  { id: "rollout", label: "Closed loop" },
+  { id: "surround-view", label: "Sensor-level" },
+  { id: "bibtex", label: "BibTeX" },
+];
+
+<AnchorNav sections={navSections} />
+
+<section id="overview" class="scroll-mt-32">
+  <div class="not-prose mx-auto max-w-5xl text-center">
+    <p class="text-balance text-lg leading-8 text-zinc-700 dark:text-zinc-300 md:text-xl">
+      VectorWorld is a streaming vector-graph world model for closed-loop autonomous-driving
+      simulation. It warm-starts history-conditioned policies, outpaints frontier tiles in real
+      time, and maintains reactive traffic over kilometer-scale rollout.
+    </p>
+
+    <div class="mt-6 flex flex-wrap justify-center gap-3">
+      <a href="#video-overview" class="vw-pill">Video overview</a>
+      <a href="#efficiency" class="vw-pill">One-step efficiency</a>
+      <a href="#rollout" class="vw-pill">Exported scene viewer</a>
+    </div>
+  </div>
+
+  <div class="mt-8">
+    <Wide>
+      <FigureBlock
+        kind="video"
+        width="full"
+        stage="panorama"
+        aspectRatio="16 / 9"
+        label="Teaser"
+        src={heroTeaser}
+        controls={false}
+        autoplay={true}
+        muted={true}
+        loop={true}
+        showOpenButton={false}
+        caption="Streaming closed-loop rollout: warm start, one-step frontier completion, and long-horizon stability."
+      />
+    </Wide>
+  </div>
+
+  <div class="not-prose mt-8 grid gap-4 md:grid-cols-3">
+    <div class="vw-card p-5">
+      <p class="vw-stat-label">Interface</p>
+      <p class="vw-stat-value">Warm-start interaction state</p>
+      <p class="vw-stat-copy">
+        Motion-aware gated VAE for history-conditioned policies at rollout start.
+      </p>
+    </div>
+
+    <div class="vw-card p-5">
+      <p class="vw-stat-label">Generator</p>
+      <p class="vw-stat-value">≈ 6 ms / 64 m × 64 m tile</p>
+      <p class="vw-stat-copy">
+        One-step MeanFlow enables real-time masked completion during rollout.
+      </p>
+    </div>
+
+    <div class="vw-card p-5">
+      <p class="vw-stat-label">Closed loop</p>
+      <p class="vw-stat-value">1 km+ rollout</p>
+      <p class="vw-stat-copy">
+        DeltaSim keeps NPC behavior reactive and physically aligned over long horizons.
+      </p>
+    </div>
+  </div>
+
+  <div class="not-prose mt-10">
+    <div class="vw-surface-muted p-6 md:p-8">
+      <div class="grid gap-6 lg:grid-cols-2">
+        <div>
+          <p class="vw-eyebrow">Closed-loop constraints</p>
+
+          <div class="mt-4 space-y-3">
+            <div class="vw-card-muted p-4">
+              <p class="m-0 text-base font-semibold text-zinc-900 dark:text-zinc-100">
+                History-free initialization
+              </p>
+              <p class="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+                Static snapshots mismatch the inputs expected by history-conditioned policies.
+              </p>
+            </div>
+
+            <div class="vw-card-muted p-4">
+              <p class="m-0 text-base font-semibold text-zinc-900 dark:text-zinc-100">
+                Multi-step sampling latency
+              </p>
+              <p class="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+                Repeated rollout-time generation breaks the real-time budget when many solver steps
+                are required.
+              </p>
+            </div>
+
+            <div class="vw-card-muted p-4">
+              <p class="m-0 text-base font-semibold text-zinc-900 dark:text-zinc-100">
+                Long-horizon feasibility drift
+              </p>
+              <p class="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+                Small topology and kinematic errors compound over kilometer-scale rollout.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <p class="vw-eyebrow">VectorWorld contributions</p>
+
+          <div class="mt-4 space-y-3">
+            <div class="vw-card-muted p-4">
+              <p class="m-0 text-base font-semibold text-zinc-900 dark:text-zinc-100">
+                Motion-aware interaction-state VAE
+              </p>
+              <p class="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+                Warm-start interface aligned with history-conditioned policies.
+              </p>
+            </div>
+
+            <div class="vw-card-muted p-4">
+              <p class="m-0 text-base font-semibold text-zinc-900 dark:text-zinc-100">
+                Edge-gated relational DiT + MeanFlow/JVP
+              </p>
+              <p class="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+                One-step masked completion on heterogeneous vector graphs.
+              </p>
+            </div>
+
+            <div class="vw-card-muted p-4">
+              <p class="m-0 text-base font-semibold text-zinc-900 dark:text-zinc-100">
+                DeltaSim
+              </p>
+              <p class="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+                Physics-aligned NPC policy for long-horizon rollout stability.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="video-overview" class="mt-20 scroll-mt-32">
+  <SectionHeading
+    eyebrow="Video overview"
+    title="A concise walkthrough of the full system"
+    subtitle="Problem setting, method, and main results in one video."
+    center={true}
+  />
+
+  <Wide>
+    <FigureBlock
+      kind="video"
+      width="wide"
+      stage="panorama"
+      aspectRatio="16 / 9"
+      label="Overview video"
+      src={explanationVideo}
+      controls={true}
+      autoplay={false}
+      muted={false}
+      loop={false}
+      openLabel="Open video"
+    />
+  </Wide>
+</section>
+
+<section id="method" class="mt-20 scroll-mt-32">
+  <SectionHeading
+    eyebrow="Method"
+    title="A deployment-oriented three-component stack"
+    subtitle="Warm-start interface → one-step relational generation → physics-aligned closed loop."
+  />
+
+  <div class="mt-8">
+    <Wide>
+      <FigureBlock
+        kind="image"
+        width="figure"
+        stage="panorama"
+        label="System figure"
+        src="./assets/paper_material/VectorWorld_Sim_Engine_Vis.pdf"
+        href={systemFigurePdf}
+        alt="VectorWorld system overview"
+        openLabel="Open figure"
+        mediaWrapClass="w-full md:w-2/3 max-w-4xl"
+        caption="Closed loop at a glance: initialize the base tile, outpaint the frontier ahead of the ego, and keep reactive NPC behavior stable during rollout."
+      />
+    </Wide>
+  </div>
+
+  <div class="mt-10">
+    <Wide>
+      <div class="mx-auto max-w-screen-xl">
+        <MethodScrollytelling />
+      </div>
+    </Wide>
+  </div>
+</section>
+
+<section id="quality" class="mt-20 scroll-mt-32">
+  <SectionHeading
+    eyebrow="Initialization quality"
+    title="Initialization quality on Waymo and nuPlan"
+    subtitle="VectorWorld improves lane continuity, route validity, and agent-map consistency at initialization."
+  />
+
+  <div class="not-prose mt-6 grid gap-4 md:grid-cols-3">
+    <div class="vw-card p-5">
+      <p class="vw-stat-label">nuPlan endpoint gap</p>
+      <p class="vw-stat-value">0.078 m</p>
+      <p class="vw-stat-copy">
+        Smaller lane-transition error than ScenDream-L (0.250 m).
+      </p>
+    </div>
+
+    <div class="vw-card p-5">
+      <p class="vw-stat-label">nuPlan init collision</p>
+      <p class="vw-stat-value">3.01%</p>
+      <p class="vw-stat-copy">
+        Lower initial collision rate than ScenDream-L (9.30%).
+      </p>
+    </div>
+
+    <div class="vw-card p-5">
+      <p class="vw-stat-label">Waymo FD</p>
+      <p class="vw-stat-value">0.94</p>
+      <p class="vw-stat-copy">
+        Best non-privileged perceptual score reported in the paper.
+      </p>
+    </div>
+  </div>
+
+  <div class="mt-8">
+    <Wide>
+      <FigureBlock
+        kind="image"
+        width="full"
+        stage="balanced"
+        label="Comparison figure"
+        src="./assets/paper_material/viz_main_compare.pdf"
+        href={qualitativeFigurePdf}
+        alt="VectorWorld qualitative comparison figure"
+        openLabel="Open figure"
+        caption="Representative initialization comparison on Waymo and nuPlan. VectorWorld yields more continuous lanes, smaller lane-transition gaps, and fewer agent-map inconsistencies than prior vectorized generators."
+      />
+    </Wide>
+  </div>
+</section>
+
+<section id="efficiency" class="mt-20 scroll-mt-32">
+  <SectionHeading
+    eyebrow="Efficiency"
+    title="One-step generation in the real-time regime"
+    subtitle="Matched clip progress across the multi-step baseline, few-step MeanFlow, and the one-step deployment point."
+  />
+
+  <div class="mt-8">
+    <Wide>
+      <div class="mx-auto max-w-screen-xl">
+        <EfficiencyExplorer />
+      </div>
+    </Wide>
+  </div>
+
+  <div class="mt-8">
+    <Wide>
+      <FigureBlock
+        kind="image"
+        width="wide"
+        stage="panorama"
+        label="Latency-quality figure"
+        src="./assets/paper_material/efficiency_quality_4panel_horizontal.pdf"
+        href={efficiencyFigurePdf}
+        alt="Latency-quality trade-off figure"
+        openLabel="Open figure"
+        mediaWrapClass="max-w-6xl"
+        caption="Figure 6 in the paper. The key deployment question is not only absolute quality, but which operating point stays within the streaming budget while keeping endpoint distance and agent JSD controlled."
+      />
+    </Wide>
+  </div>
+</section>
+
+<section id="rollout" class="mt-20 scroll-mt-32">
+  <SectionHeading
+    eyebrow="Closed loop"
+    title="Long-horizon rollout evidence and exported scene inspection"
+    subtitle="Closed-loop demos, key rollout metrics, and a lightweight viewer for exported vector scenes."
+  />
+
+  <div class="not-prose mt-6 grid gap-4 md:grid-cols-3">
+    <div class="vw-card p-5">
+      <p class="vw-stat-label">Warm start</p>
+      <p class="vw-stat-value">16.6 → 9.6 jerk</p>
+      <p class="vw-stat-copy">
+        Warm-started interaction states reduce early-horizon instability in closed loop.
+      </p>
+    </div>
+
+    <div class="vw-card p-5">
+      <p class="vw-stat-label">Horizon</p>
+      <p class="vw-stat-value">1 km+ rollout</p>
+      <p class="vw-stat-copy">
+        Streaming outpainting extends evaluation well beyond a single initialized tile.
+      </p>
+    </div>
+
+    <div class="vw-card p-5">
+      <p class="vw-stat-label">Training value</p>
+      <p class="vw-stat-value">25.7% → 56.0%</p>
+      <p class="vw-stat-copy">
+        PPO success improves after retraining inside the VectorWorld environment.
+      </p>
+    </div>
+  </div>
+
+  <div class="mt-8">
+    <Wide>
+      <div class="mx-auto max-w-screen-xl">
+        <VectorSceneViewer />
+      </div>
+    </Wide>
+  </div>
+
+  <div class="not-prose mt-10">
+    <Wide>
+      <div class="mx-auto grid max-w-screen-xl gap-6 lg:grid-cols-2">
+        <article class="vw-card p-4">
+          <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h3 class="m-0 text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+              Rollout case 1
+            </h3>
+            <span class="rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+              Frontier outpainting
+            </span>
+          </div>
+
+          <div class="vw-media-frame vw-media-frame--rollout">
+            <Video
+              src={rollout1}
+              controls={true}
+              autoplay={false}
+              loop={false}
+              preload="none"
+              class="!h-full !w-full object-contain"
+            />
+          </div>
+
+          <p class="mt-3 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+            Long-horizon rollout with repeated frontier completion ahead of the ego.
+          </p>
+        </article>
+
+        <article class="vw-card p-4">
+          <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h3 class="m-0 text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+              Rollout case 2
+            </h3>
+            <span class="rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+              Stable closed loop
+            </span>
+          </div>
+
+          <div class="vw-media-frame vw-media-frame--rollout">
+            <Video
+              src={rollout2}
+              controls={true}
+              autoplay={false}
+              loop={false}
+              preload="none"
+              class="!h-full !w-full object-contain"
+            />
+          </div>
+
+          <p class="mt-3 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+            Second rollout showing stable route continuation under a different map layout.
+          </p>
+        </article>
+      </div>
+    </Wide>
+  </div>
+</section>
+
+<section id="surround-view" class="mt-20 scroll-mt-32">
+  <SectionHeading
+    eyebrow="Surround-view generation"
+    title="VectorWorld as a controllable layout prior for surround-view video generation"
+    subtitle="The generated vector scene provides explicit layout control for downstream surround-view video generation."
+  />
+
+  <div class="mt-8">
+    <Wide>
+      <div class="mx-auto max-w-screen-xl">
+        <SurroundViewCaseSlider />
+      </div>
+    </Wide>
+  </div>
+</section>
+
+<section id="bibtex" class="mt-20 scroll-mt-32">
+  <SectionHeading
+    eyebrow="BibTeX"
+    title="Citation"
+    subtitle="If you find VectorWorld useful, please cite the project page or the paper."
+    center={true}
+  />
+</section>
+
+```bibtex
+@misc{jiang2026vectorworld,
+  title        = {VectorWorld: Efficient Streaming World Model via Diffusion Flow on Vector Graphs},
+  author       = {Chaokang Jiang and Deshen Zhou and Jiuming Liu and Kevin Li Sun},
+  year         = {2026},
+  note         = {Project page / preprint},
+}

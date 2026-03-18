@@ -1,0 +1,65 @@
+---
+import SurroundViewCaseSliderClient, {
+  type SurroundViewCase,
+} from "./SurroundViewCaseSliderClient.tsx";
+
+import surroundVector1 from "../../assets/paper_material/SurroundView_Videos_vector_env.mp4";
+import surroundLayout1 from "../../assets/paper_material/SurroundView_Videos_contrl_layout.mp4";
+import surroundResult1 from "../../assets/paper_material/SurroundView_Videos_result.mp4";
+
+import surroundVector2 from "../../assets/paper_material/SurroundView_Videos_vector_env2.mp4";
+import surroundLayout2 from "../../assets/paper_material/SurroundView_Videos_contrl_layout2.mp4";
+import surroundResult2 from "../../assets/paper_material/SurroundView_Videos_result2.mp4";
+
+import surroundVector3 from "../../assets/paper_material/SurroundView_Videos_vector_env3.mp4";
+import surroundLayout3 from "../../assets/paper_material/SurroundView_Videos_contrl_layout3.mp4";
+import surroundResult3 from "../../assets/paper_material/SurroundView_Videos_result3.mp4";
+
+import surroundVector4 from "../../assets/paper_material/SurroundView_Videos_vector_env4.mp4";
+import surroundLayout4 from "../../assets/paper_material/SurroundView_Videos_contrl_layout4.mp4";
+import surroundResult4 from "../../assets/paper_material/SurroundView_Videos_result4.mp4";
+
+const cases = [
+  {
+    key: "case-1",
+    label: "Case 1",
+    summary:
+      "VectorWorld provides an explicit structural prior for sensor-level surround-view generation.",
+    vectorSrc: surroundVector1,
+    layoutSrc: surroundLayout1,
+    resultSrc: surroundResult1,
+  },
+  {
+    key: "case-2",
+    label: "Case 2",
+    summary:
+      "VectorWorld provides an explicit structural prior for sensor-level surround-view generation.",
+    vectorSrc: surroundVector2,
+    layoutSrc: surroundLayout2,
+    resultSrc: surroundResult2,
+  },
+  {
+    key: "case-3",
+    label: "Case 3",
+    summary:
+      "VectorWorld provides an explicit structural prior for sensor-level surround-view generation.",
+    vectorSrc: surroundVector3,
+    layoutSrc: surroundLayout3,
+    resultSrc: surroundResult3,
+  },
+  {
+    key: "case-4",
+    label: "Case 4",
+    summary:
+      "VectorWorld provides an explicit structural prior for sensor-level surround-view generation.",
+    vectorSrc: surroundVector4,
+    layoutSrc: surroundLayout4,
+    resultSrc: surroundResult4,
+  },
+] satisfies SurroundViewCase[];
+---
+
+<SurroundViewCaseSliderClient
+  client:visible={{ rootMargin: "200px" }}
+  cases={cases}
+/>

@@ -1,0 +1,233 @@
+{
+  "format": "vectorworld-web-index",
+  "version": 1,
+  "dataset": "waymo",
+  "run_name": "diffusion_motion_waymo_sim_500",
+  "num_scenes": 16,
+  "scenes": [
+    {
+      "id": "0_0",
+      "path": "scenes/0_0/scene.json",
+      "num_agents": 60,
+      "num_lanes": 86,
+      "route_points": 531,
+      "route_completed": true,
+      "bbox_xyxy": [
+        -32.0,
+        -32.0,
+        206.9373016357422,
+        375.3436279296875
+      ]
+    },
+    {
+      "id": "0_1",
+      "path": "scenes/0_1/scene.json",
+      "num_agents": 125,
+      "num_lanes": 251,
+      "route_points": 529,
+      "route_completed": true,
+      "bbox_xyxy": [
+        -244.92637634277344,
+        -32.0,
+        36.31121063232422,
+        305.0693664550781
+      ]
+    },
+    {
+      "id": "12_0",
+      "path": "scenes/12_0/scene.json",
+      "num_agents": 59,
+      "num_lanes": 103,
+      "route_points": 532,
+      "route_completed": true,
+      "bbox_xyxy": [
+        -326.1832580566406,
+        -32.0,
+        88.5033187866211,
+        133.51524353027344
+      ]
+    },
+    {
+      "id": "12_7",
+      "path": "scenes/12_7/scene.json",
+      "num_agents": 94,
+      "num_lanes": 265,
+      "route_points": 501,
+      "route_completed": true,
+      "bbox_xyxy": [
+        -341.41888427734375,
+        -157.97145080566406,
+        32.0,
+        67.06763458251953
+      ]
+    },
+    {
+      "id": "13_2",
+      "path": "scenes/13_2/scene.json",
+      "num_agents": 90,
+      "num_lanes": 177,
+      "route_points": 510,
+      "route_completed": true,
+      "bbox_xyxy": [
+        -310.4130859375,
+        -32.0,
+        33.407684326171875,
+        241.1954803466797
+      ]
+    },
+    {
+      "id": "13_3",
+      "path": "scenes/13_3/scene.json",
+      "num_agents": 101,
+      "num_lanes": 228,
+      "route_points": 518,
+      "route_completed": true,
+      "bbox_xyxy": [
+        -201.4378204345703,
+        -32.0,
+        36.57316207885742,
+        316.852294921875
+      ]
+    },
+    {
+      "id": "13_4",
+      "path": "scenes/13_4/scene.json",
+      "num_agents": 74,
+      "num_lanes": 233,
+      "route_points": 512,
+      "route_completed": true,
+      "bbox_xyxy": [
+        -237.57823181152344,
+        -208.91136169433594,
+        32.0,
+        32.0
+      ]
+    },
+    {
+      "id": "13_7",
+      "path": "scenes/13_7/scene.json",
+      "num_agents": 48,
+      "num_lanes": 78,
+      "route_points": 507,
+      "route_completed": true,
+      "bbox_xyxy": [
+        -409.2736511230469,
+        -116.60260772705078,
+        32.0,
+        38.78948211669922
+      ]
+    },
+    {
+      "id": "2_3",
+      "path": "scenes/2_3/scene.json",
+      "num_agents": 69,
+      "num_lanes": 103,
+      "route_points": 517,
+      "route_completed": true,
+      "bbox_xyxy": [
+        -33.16556167602539,
+        -32.0,
+        232.82620239257812,
+        340.8952941894531
+      ]
+    },
+    {
+      "id": "2_4",
+      "path": "scenes/2_4/scene.json",
+      "num_agents": 75,
+      "num_lanes": 252,
+      "route_points": 516,
+      "route_completed": true,
+      "bbox_xyxy": [
+        -45.572776794433594,
+        -476.2755126953125,
+        43.860782623291016,
+        32.0
+      ]
+    },
+    {
+      "id": "3_0",
+      "path": "scenes/3_0/scene.json",
+      "num_agents": 58,
+      "num_lanes": 109,
+      "route_points": 522,
+      "route_completed": true,
+      "bbox_xyxy": [
+        -307.643798828125,
+        -135.92445373535156,
+        77.02484893798828,
+        64.39440155029297
+      ]
+    },
+    {
+      "id": "5_5",
+      "path": "scenes/5_5/scene.json",
+      "num_agents": 70,
+      "num_lanes": 117,
+      "route_points": 523,
+      "route_completed": true,
+      "bbox_xyxy": [
+        -32.83098220825195,
+        -32.0,
+        273.01336669921875,
+        293.83160400390625
+      ]
+    },
+    {
+      "id": "6_0",
+      "path": "scenes/6_0/scene.json",
+      "num_agents": 65,
+      "num_lanes": 129,
+      "route_points": 527,
+      "route_completed": true,
+      "bbox_xyxy": [
+        -74.9583740234375,
+        -32.0,
+        85.03974151611328,
+        387.7017822265625
+      ]
+    },
+    {
+      "id": "8_3",
+      "path": "scenes/8_3/scene.json",
+      "num_agents": 130,
+      "num_lanes": 98,
+      "route_points": 509,
+      "route_completed": true,
+      "bbox_xyxy": [
+        -336.3119812011719,
+        -32.0,
+        33.495216369628906,
+        214.7139434814453
+      ]
+    },
+    {
+      "id": "8_4",
+      "path": "scenes/8_4/scene.json",
+      "num_agents": 80,
+      "num_lanes": 202,
+      "route_points": 563,
+      "route_completed": true,
+      "bbox_xyxy": [
+        -93.3685073852539,
+        -32.0,
+        32.29324722290039,
+        471.9737854003906
+      ]
+    },
+    {
+      "id": "8_7",
+      "path": "scenes/8_7/scene.json",
+      "num_agents": 89,
+      "num_lanes": 123,
+      "route_points": 520,
+      "route_completed": true,
+      "bbox_xyxy": [
+        -210.94493103027344,
+        -32.0,
+        147.0059356689453,
+        136.50741577148438
+      ]
+    }
+  ]
+}

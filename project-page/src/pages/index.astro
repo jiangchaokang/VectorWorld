@@ -1,0 +1,129 @@
+---
+import { Font } from "astro:assets";
+
+import Table from "../components/Table.astro";
+import MediaLightbox from "../components/MediaLightbox.astro";
+import ProjectHero from "../components/vectorworld/ProjectHero.astro";
+
+import type { Author, Link, Note } from "../types/types";
+
+import "../styles/global.css";
+import "katex/dist/katex-swap.css";
+
+import { Content, frontmatter } from "../paper.mdx";
+
+interface Frontmatter {
+  title: string;
+  authors: Author[];
+  conference?: string;
+  notes?: Note[];
+  links?: Link[];
+  description?: string;
+  favicon: string;
+  thumbnail?: string;
+  theme?: "device" | "light" | "dark";
+}
+
+const {
+  title,
+  authors,
+  conference,
+  notes,
+  links,
+  description,
+  favicon,
+  thumbnail,
+  theme = "device",
+} = frontmatter as Frontmatter;
+
+const baseUrl = import.meta.env.BASE_URL;
+const prefix = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
+
+const canonicalUrl = Astro.site
+  ? new URL(Astro.url.pathname, Astro.site).toString()
+  : undefined;
+
+const ogImageUrl =
+  thumbnail && Astro.site
+    ? new URL(prefix + thumbnail, Astro.site).toString()
+    : undefined;
+---
+
+<!doctype html>
+<html class="bg-white dark:bg-zinc-900" lang="en" data-theme={theme}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#09090b" media="(prefers-color-scheme: dark)" />
+
+    {description && <meta name="description" content={description} />}
+    {canonicalUrl && <link rel="canonical" href={canonicalUrl} />}
+
+    <link rel="icon" type="image/svg+xml" href={prefix + favicon} />
+
+    <meta property="og:title" content={title} />
+    {description && <meta property="og:description" content={description} />}
+    <meta property="og:type" content="website" />
+    {canonicalUrl && <meta property="og:url" content={canonicalUrl} />}
+    {ogImageUrl && <meta property="og:image" content={ogImageUrl} />}
+
+    <meta
+      name="twitter:card"
+      content={ogImageUrl ? "summary_large_image" : "summary"}
+    />
+    <meta name="twitter:title" content={title} />
+    {description && <meta name="twitter:description" content={description} />}
+    {ogImageUrl && <meta name="twitter:image" content={ogImageUrl} />}
+
+    <Font
+      cssVariable="--font-noto-sans"
+      preload={[{ subset: "latin", style: "normal" }]}
+    />
+
+    <script is:inline>
+      (() => {
+        try {
+          const savedTheme = localStorage.getItem("vectorworld-theme");
+          if (savedTheme) {
+            document.documentElement.dataset.theme = savedTheme;
+          }
+        } catch {
+          // ignore storage errors
+        }
+      })();
+    </script>
+
+    <title>{title}</title>
+  </head>
+
+  <body
+    class="prose prose-zinc dark:prose-invert md:prose-lg prose-a:text-blue-600 prose-a:dark:text-blue-300 prose-a:no-underline prose-a:hover:underline prose-a:font-medium prose-code:bg-zinc-100 prose-code:dark:bg-zinc-800 prose-code:text-zinc-800 prose-code:dark:text-zinc-200 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:font-medium prose-code:before:content-none prose-code:after:content-none max-w-none pb-14 pt-6 font-(family-name:--font-noto-sans) selection:bg-blue-100 selection:text-blue-950 dark:selection:bg-blue-500/20 dark:selection:text-blue-50 md:pt-8"
+  >
+    <ProjectHero
+      title={title}
+      authors={authors}
+      conference={conference}
+      notes={notes}
+      links={links}
+      description={description}
+    />
+
+    <main>
+      <Content components={{ table: Table }} />
+    </main>
+
+    <MediaLightbox />
+
+    <footer
+      class="mx-auto mt-16 px-6 text-center"
+      style="max-width: var(--maximum-text-width);"
+    >
+      <p class="not-prose text-sm text-zinc-600 dark:text-zinc-400">
+        Project page for VectorWorld. Built with Astro and customized from Roman Hauksson-Neill's template.
+      </p>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,125 @@
+{
+  "format": "vectorworld-web-scene",
+  "version": 1,
+  "dataset": "waymo",
+  "run_name": "diffusion_motion_waymo_sim_500",
+  "scene_id": "0_1",
+  "units": "meter",
+  "endianness": "little",
+  "ego_index": 0,
+  "lane_width_m": 4.2,
+  "counts": {
+    "num_agents": 125,
+    "num_lanes": 251,
+    "num_points_per_lane": 20,
+    "route_points": 529,
+    "tiles": 15,
+    "lane_edges_sparse": 2014
+  },
+  "meta": {
+    "map_id": 0,
+    "lg_type": 0,
+    "route_completed": true,
+    "motion_dim": 12
+  },
+  "bbox_xyxy": [
+    -244.92637634277344,
+    -32.0,
+    36.31121063232422,
+    305.0693664550781
+  ],
+  "buffers": {
+    "agent_states": {
+      "file": "agent_states.f32",
+      "dtype": "f32",
+      "shape": [
+        125,
+        7
+      ]
+    },
+    "agent_types": {
+      "file": "agent_types.u8",
+      "dtype": "u8",
+      "shape": [
+        125
+      ],
+      "encoding": "label",
+      "labels": [
+        "vehicle",
+        "pedestrian",
+        "cyclist"
+      ]
+    },
+    "agent_motion": {
+      "file": "agent_motion.f32",
+      "dtype": "f32",
+      "shape": [
+        125,
+        12
+      ],
+      "optional": true,
+      "semantics": "body_frame_polyline_m",
+      "layout": "x1,y1,...,xK,yK"
+    },
+    "lanes": {
+      "file": "lanes.f32",
+      "dtype": "f32",
+      "shape": [
+        251,
+        20,
+        2
+      ],
+      "semantics": "lane_centerline"
+    },
+    "route": {
+      "file": "route.f32",
+      "dtype": "f32",
+      "shape": [
+        529,
+        2
+      ],
+      "resample_every_m": 1.0
+    },
+    "tile_corners": {
+      "file": "tile_corners.f32",
+      "dtype": "f32",
+      "shape": [
+        15,
+        4,
+        2
+      ]
+    },
+    "lane_connections": {
+      "src": {
+        "file": "lane_conn_src.u16",
+        "dtype": "u16",
+        "shape": [
+          2014
+        ]
+      },
+      "dst": {
+        "file": "lane_conn_dst.u16",
+        "dtype": "u16",
+        "shape": [
+          2014
+        ]
+      },
+      "type": {
+        "file": "lane_conn_type.u8",
+        "dtype": "u8",
+        "shape": [
+          2014
+        ]
+      },
+      "enum": {
+        "none": 0,
+        "pred": 1,
+        "succ": 2,
+        "left": 3,
+        "right": 4,
+        "self": 5
+      },
+      "encoding": "sparse_edge_list"
+    }
+  }
+}

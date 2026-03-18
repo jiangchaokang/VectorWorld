@@ -1,0 +1,62 @@
+---
+import Authors from "../Authors.astro";
+import Links from "../Links.astro";
+import Notes from "../Notes.astro";
+import ThemeToggle from "../ThemeToggle.astro";
+import type { Author, Link, Note } from "../../types/types";
+
+interface Props {
+  title: string;
+  authors: Author[];
+  conference?: string;
+  notes?: Note[];
+  links?: Link[];
+  description?: string;
+}
+
+const {
+  title,
+  authors,
+  conference,
+  notes,
+  links,
+  description,
+} = Astro.props;
+
+const [candidateBrand, candidateRest] = title.split(/:\s*/, 2);
+const brand = candidateRest ? candidateBrand : "";
+const subtitle = candidateRest ?? title;
+---
+
+<header class="mx-auto mb-12 px-6 md:mb-16" style="max-width: 90rem;">
+  <div class="vw-hero-shell px-6 py-6 md:px-10 md:py-10">
+    <div class="mb-6 flex justify-end">
+      <ThemeToggle />
+    </div>
+
+    <div class="text-center">
+      {brand && (
+        <div class="vw-hero-brand-wrap">
+          <span class="vw-hero-brand">{brand}</span>
+        </div>
+      )}
+
+      <h1 class={brand ? "vw-hero-subtitle" : "vw-hero-title"}>
+        {subtitle}
+      </h1>
+
+      {description && (
+        <p class="not-prose mx-auto mt-5 max-w-3xl vw-lead">
+          {description}
+        </p>
+      )}
+
+      <div class="not-prose mt-7 flex flex-col items-center gap-4">
+        <Authors authors={authors} />
+        {conference && <div class="vw-eyebrow">{conference}</div>}
+        {notes && notes.length > 0 && <Notes notes={notes} />}
+        {links && links.length > 0 && <Links links={links} />}
+      </div>
+    </div>
+  </div>
+</header>

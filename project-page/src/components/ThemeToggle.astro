@@ -1,0 +1,93 @@
+---
+const options = [
+  { value: "light", label: "Light" },
+  { value: "dark", label: "Dark" },
+  { value: "device", label: "Auto" },
+];
+---
+
+<div
+  data-theme-toggle
+  class="not-prose inline-flex items-center gap-1 rounded-full border border-zinc-200 bg-white/90 p-1 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/90"
+>
+  {
+    options.map((option) => (
+      <button
+        type="button"
+        data-theme-option={option.value}
+        aria-pressed="false"
+        class="rounded-full px-3 py-1.5 text-xs font-semibold text-zinc-500 transition hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+      >
+        {option.label}
+      </button>
+    ))
+  }
+</div>
+
+<script is:inline>
+  (() => {
+    const STORAGE_KEY = "vectorworld-theme";
+
+    const readStoredTheme = () => {
+      try {
+        return window.localStorage.getItem(STORAGE_KEY);
+      } catch {
+        return null;
+      }
+    };
+
+    const writeStoredTheme = (value) => {
+      try {
+        window.localStorage.setItem(STORAGE_KEY, value);
+      } catch {
+        // ignore storage errors
+      }
+    };
+
+    const applyTheme = (theme, buttons) => {
+      document.documentElement.dataset.theme = theme;
+
+      buttons.forEach((button) => {
+        const isActive = button.dataset.themeOption === theme;
+
+        button.setAttribute("aria-pressed", String(isActive));
+
+        button.classList.toggle("bg-zinc-900", isActive);
+        button.classList.toggle("text-white", isActive);
+        button.classList.toggle("dark:bg-zinc-100", isActive);
+        button.classList.toggle("dark:text-zinc-900", isActive);
+
+        button.classList.toggle("text-zinc-500", !isActive);
+        button.classList.toggle("dark:text-zinc-400", !isActive);
+      });
+    };
+
+    const setup = () => {
+      document.querySelectorAll("[data-theme-toggle]").forEach((group) => {
+        if (!(group instanceof HTMLElement)) return;
+        if (group.dataset.ready === "true") return;
+        group.dataset.ready = "true";
+
+        const buttons = Array.from(
+          group.querySelectorAll("button[data-theme-option]"),
+        );
+
+        const current =
+          readStoredTheme() ?? document.documentElement.dataset.theme ?? "device";
+
+        applyTheme(current, buttons);
+
+        buttons.forEach((button) => {
+          button.addEventListener("click", () => {
+            const nextTheme = button.dataset.themeOption ?? "device";
+            writeStoredTheme(nextTheme);
+            applyTheme(nextTheme, buttons);
+          });
+        });
+      });
+    };
+
+    setup();
+    document.addEventListener("astro:after-swap", setup);
+  })();
+</script>

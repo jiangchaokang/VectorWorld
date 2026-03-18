@@ -1,0 +1,11 @@
+---
+import VectorSceneViewerClient from "./VectorSceneViewerClient.tsx";
+
+const rawBaseUrl = import.meta.env.BASE_URL;
+const baseUrl = rawBaseUrl.endsWith("/") ? rawBaseUrl : `${rawBaseUrl}/`;
+---
+
+<VectorSceneViewerClient
+  client:visible={{ rootMargin: "200px" }}
+  indexUrl={`${baseUrl}web_sim_envs/index.json`}
+/>

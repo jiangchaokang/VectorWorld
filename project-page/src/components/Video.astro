@@ -1,0 +1,33 @@
+---
+import type { HTMLAttributes } from "astro/types";
+
+interface Props extends HTMLAttributes<"video"> {
+  src: string;
+}
+
+const {
+  src,
+  controls = true,
+  loop = false,
+  playsinline = true,
+  muted = true,
+  autoplay = false,
+  preload = "metadata",
+  class: className = "",
+  ...videoProps
+} = Astro.props;
+
+const classes = ["block h-auto w-full", className].filter(Boolean).join(" ");
+---
+
+<video
+  class={classes}
+  src={src}
+  controls={controls}
+  loop={loop}
+  playsinline={playsinline}
+  muted={muted}
+  autoplay={autoplay}
+  preload={preload}
+  {...videoProps}
+/>

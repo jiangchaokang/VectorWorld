@@ -1,0 +1,103 @@
+---
+interface SectionLink {
+  id: string;
+  label: string;
+}
+
+interface Props {
+  sections: SectionLink[];
+}
+
+const { sections } = Astro.props;
+---
+
+<nav data-anchor-nav class="not-prose sticky top-3 z-40 mb-8">
+  <div class="overflow-x-auto rounded-full border border-zinc-200 bg-white/90 px-3 py-3 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/85">
+    <ul class="m-0 flex min-w-max list-none gap-2 p-0">
+      {
+        sections.map((section) => (
+          <li>
+            <a
+              href={`#${section.id}`}
+              data-section-link={section.id}
+              class="block rounded-full px-4 py-2 text-sm font-medium text-zinc-600 transition hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+            >
+              {section.label}
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</nav>
+
+<script is:inline>
+  (() => {
+    const nav = document.querySelector("[data-anchor-nav]");
+    if (!(nav instanceof HTMLElement)) return;
+    if (nav.dataset.ready === "true") return;
+    nav.dataset.ready = "true";
+
+    const links = Array.from(nav.querySelectorAll("a[data-section-link]"));
+    const activeClasses = [
+      "bg-zinc-900",
+      "text-white",
+      "dark:bg-zinc-100",
+      "dark:text-zinc-900",
+    ];
+    const inactiveClasses = ["text-zinc-600", "dark:text-zinc-400"];
+
+    const setActive = (id) => {
+      links.forEach((link) => {
+        const isActive = link.dataset.sectionLink === id;
+        activeClasses.forEach((className) => link.classList.toggle(className, isActive));
+        inactiveClasses.forEach((className) => link.classList.toggle(className, !isActive));
+      });
+    };
+
+    links.forEach((link) => {
+      link.addEventListener("click", (event) => {
+        const id = link.dataset.sectionLink;
+        if (!id) return;
+
+        const target = document.getElementById(id);
+        if (!target) return;
+
+        event.preventDefault();
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+        history.replaceState(null, "", `#${id}`);
+        setActive(id);
+      });
+    });
+
+    const observedSections = links
+      .map((link) => document.getElementById(link.dataset.sectionLink || ""))
+      .filter(Boolean);
+
+    if (window.location.hash) {
+      setActive(window.location.hash.replace("#", ""));
+    } else if (observedSections[0]) {
+      setActive(observedSections[0].id);
+    }
+
+    if (observedSections.length > 0) {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          const visibleEntries = entries
+            .filter((entry) => entry.isIntersecting)
+            .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+
+          if (visibleEntries[0]) {
+            setActive(visibleEntries[0].target.id);
+          }
+        },
+        {
+          rootMargin: "-35% 0px -55% 0px",
+          threshold: [0.1, 0.25, 0.5, 0.75],
+        },
+      );
+
+      observedSections.forEach((section) => observer.observe(section));
+    }
+  })();
+</script>
