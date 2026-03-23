@@ -3,23 +3,17 @@ import {
   useMemo,
   useRef,
   useState,
-  type PointerEvent as ReactPointerEvent,
-  type WheelEvent as ReactWheelEvent,
+  useCallback,
 } from "react";
+import * as THREE from "three";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+
+/* ================================================================
+   Types
+   ================================================================ */
 
 type DType = "f32" | "u8" | "u16";
-
-type Point = {
-  x: number;
-  y: number;
-};
-
-type Camera = {
-  scale: number;
-  fitScale: number;
-  tx: number;
-  ty: number;
-};
+type Point = { x: number; y: number };
 
 type IndexSceneEntry = {
   id: string;
@@ -31,9 +25,7 @@ type IndexSceneEntry = {
   bbox_xyxy: [number, number, number, number];
 };
 
-type SceneIndex = {
-  scenes: IndexSceneEntry[];
-};
+type SceneIndex = { scenes: IndexSceneEntry[] };
 
 type BufferDescriptor = {
   file: string;
@@ -105,7 +97,6 @@ type ParsedAgent = {
 };
 
 type ParsedConnectionKind = "succ" | "left" | "right" | "other";
-
 type ParsedConnection = {
   srcTail: Point;
   dstHead: Point;
@@ -127,143 +118,187 @@ type HoverState = {
   screenY: number;
 };
 
-type Palette = {
-  background: string;
-  roadFill: string;
-  laneCenter: string;
-  routeGlow: string;
-  route: string;
-  tileFill: string;
-  tileStroke: string;
-  successor: string;
-  lateral: string;
-  vehicle: string;
-  pedestrian: string;
-  cyclist: string;
-  ego: string;
-  roofLight: string;
-  outline: string;
-  heading: string;
-  hover: string;
-  motionVehicle: string;
-  motionPedestrian: string;
-  motionCyclist: string;
-  agentShadow: string;
+type ThreePalette = {
+  background: number;
+  ground: number;
+  gridLine: number;
+  roadSurface: number;
+  laneCenter: number;
+  route: number;
+  tileFill: number;
+  tileOpacity: number;
+  connection: number;
+  ego: number;
+  vehicle: number;
+  pedestrian: number;
+  cyclist: number;
+  trail: number;
+  highlight: number;
+  headingIndicator: number;
 };
 
-type Props = {
-  indexUrl: string;
-};
+type Props = { indexUrl: string };
 
 const STATE_LAYOUT = {
   x: 0,
   y: 1,
-  heading: 2,
+  speed: 2,
+  cosHeading: 3,
+  sinHeading: 4,
   length: 5,
   width: 6,
+  legacyHeading: 2,
 } as const;
 
 const MOTION_LOOP_SECONDS = 6;
 const MOTION_POINT_EPS = 1e-3;
 const CURRENT_ANCHOR_THRESHOLD_M = 0.35;
+const TRAIL_LOCAL_Y_SIGN: 1 | -1 = 1;
+const AGENT_YAW_OFFSET = 0;
 
-async function fetchJson<T>(url: string): Promise<T> {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Failed to load ${url}`);
-  }
-  return (await response.json()) as T;
+const LAYER_Y = {
+  ground: -0.02,
+  tile: 0.0,
+  road: 0.02,
+  laneCenter: 0.05,
+  connection: 0.04,
+  route: 0.07,
+  trail: 0.09,
+} as const;
+
+const AGENT_H: Record<string, number> = {
+  vehicle: 1.5,
+  pedestrian: 1.7,
+  cyclist: 1.3,
+};
+
+/* ================================================================
+   Utility helpers
+   ================================================================ */
+
+function isFiniteNumber(v: unknown): v is number {
+  return typeof v === "number" && Number.isFinite(v);
 }
 
-async function fetchTypedArray(url: string, dtype: DType) {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Failed to load ${url}`);
-  }
-
-  const buffer = await response.arrayBuffer();
-
-  switch (dtype) {
-    case "f32":
-      return new Float32Array(buffer);
-    case "u8":
-      return new Uint8Array(buffer);
-    case "u16":
-      return new Uint16Array(buffer);
-    default:
-      throw new Error(`Unsupported dtype: ${dtype}`);
-  }
-}
-
-function isDarkTheme() {
-  const theme = document.documentElement.dataset.theme;
-  if (theme === "dark") return true;
-  if (theme === "light") return false;
-  return window.matchMedia("(prefers-color-scheme: dark)").matches;
-}
-
-function isFiniteNumber(value: unknown): value is number {
-  return typeof value === "number" && Number.isFinite(value);
-}
-
-function clamp(value: number, minValue: number, maxValue: number) {
-  return Math.max(minValue, Math.min(maxValue, value));
+function clamp(v: number, lo: number, hi: number) {
+  return Math.max(lo, Math.min(hi, v));
 }
 
 function lerp(a: number, b: number, t: number) {
   return a + (b - a) * t;
 }
 
-function toDegrees(radian: number) {
-  return (radian * 180) / Math.PI;
+function toDeg(r: number) {
+  return (r * 180) / Math.PI;
 }
 
-function lastShapeDim(shape: number[], fallback: number) {
-  return shape.length > 0 ? shape[shape.length - 1] : fallback;
+function wrapAnglePi(angle: number) {
+  let a = angle;
+  while (a <= -Math.PI) a += Math.PI * 2;
+  while (a > Math.PI) a -= Math.PI * 2;
+  return a;
 }
 
-function createFitCamera(
-  bbox: [number, number, number, number],
-  width: number,
-  height: number,
-  padding = 48,
-): Camera {
-  const [x0, y0, x1, y1] = bbox;
-  const bboxWidth = Math.max(x1 - x0, 1);
-  const bboxHeight = Math.max(y1 - y0, 1);
+function resolveHeadingFromAgentState(
+  state: Float32Array,
+  base: number,
+  stride: number,
+) {
+  const cosHeading =
+    STATE_LAYOUT.cosHeading < stride
+      ? state[base + STATE_LAYOUT.cosHeading]
+      : undefined;
 
-  const scale = Math.min(
-    Math.max((width - padding * 2) / bboxWidth, 0.001),
-    Math.max((height - padding * 2) / bboxHeight, 0.001),
-  );
+  const sinHeading =
+    STATE_LAYOUT.sinHeading < stride
+      ? state[base + STATE_LAYOUT.sinHeading]
+      : undefined;
 
-  const centerX = (x0 + x1) / 2;
-  const centerY = (y0 + y1) / 2;
+  // 推荐路径：VectorWorld 官方统一格式
+  if (
+    isFiniteNumber(cosHeading) &&
+    isFiniteNumber(sinHeading) &&
+    Math.abs(cosHeading) <= 1.1 &&
+    Math.abs(sinHeading) <= 1.1
+  ) {
+    const norm = Math.hypot(cosHeading, sinHeading);
+    if (norm > 1e-6) {
+      return wrapAnglePi(
+        Math.atan2(sinHeading / norm, cosHeading / norm),
+      );
+    }
+  }
 
-  return {
-    scale,
-    fitScale: scale,
-    tx: width / 2 - centerX * scale,
-    ty: height / 2 + centerY * scale,
-  };
+  // 兼容某些旧格式：如果真的存在“第 3 维就是 heading”的历史导出
+  const legacyHeading =
+    STATE_LAYOUT.legacyHeading < stride
+      ? state[base + STATE_LAYOUT.legacyHeading]
+      : undefined;
+
+  if (
+    isFiniteNumber(legacyHeading) &&
+    Math.abs(legacyHeading) <= Math.PI * 2 + 1e-3
+  ) {
+    return wrapAnglePi(legacyHeading);
+  }
+
+  return 0;
 }
 
-function worldToScreen(x: number, y: number, camera: Camera): Point {
-  return {
-    x: x * camera.scale + camera.tx,
-    y: -y * camera.scale + camera.ty,
-  };
+function lastDim(shape: number[], fb: number) {
+  return shape.length > 0 ? shape[shape.length - 1] : fb;
 }
 
-function screenToWorld(x: number, y: number, camera: Camera): Point {
-  return {
-    x: (x - camera.tx) / camera.scale,
-    y: (camera.ty - y) / camera.scale,
-  };
+function distPt(a: Point, b: Point) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
-function resolveAgentSize(label: string, rawLength?: number, rawWidth?: number) {
-  const fallback =
+/* ================================================================
+   Data loading
+   ================================================================ */
+
+async function fetchJson<T>(url: string): Promise<T> {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`Failed to load ${url}`);
+  return (await r.json()) as T;
+}
+
+/* ★ FIX 1: 增加第四个重载签名，接受 DType 联合类型 */
+async function fetchTypedArray(
+  url: string,
+  dtype: "f32",
+): Promise<Float32Array>;
+async function fetchTypedArray(
+  url: string,
+  dtype: "u8",
+): Promise<Uint8Array>;
+async function fetchTypedArray(
+  url: string,
+  dtype: "u16",
+): Promise<Uint16Array>;
+async function fetchTypedArray(
+  url: string,
+  dtype: DType,
+): Promise<Float32Array | Uint8Array | Uint16Array>;
+async function fetchTypedArray(
+  url: string,
+  dtype: DType,
+): Promise<Float32Array | Uint8Array | Uint16Array> {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`Failed to load ${url}`);
+  const buf = await r.arrayBuffer();
+  if (dtype === "f32") return new Float32Array(buf);
+  if (dtype === "u8") return new Uint8Array(buf);
+  if (dtype === "u16") return new Uint16Array(buf);
+  throw new Error(`Unsupported dtype: ${dtype}`);
+}
+
+/* ================================================================
+   Agent size + motion polyline helpers
+   ================================================================ */
+
+function resolveAgentSize(label: string, rawL?: number, rawW?: number) {
+  const fb =
     label === "pedestrian"
       ? { length: 0.8, width: 0.8 }
       : label === "cyclist"
@@ -271,139 +306,122 @@ function resolveAgentSize(label: string, rawLength?: number, rawWidth?: number) 
         : { length: 4.6, width: 1.9 };
 
   const length =
-    isFiniteNumber(rawLength) && rawLength >= 0.4 && rawLength <= 12
-      ? rawLength
-      : fallback.length;
-
+    isFiniteNumber(rawL) && rawL >= 0.4 && rawL <= 12 ? rawL : fb.length;
   const width =
-    isFiniteNumber(rawWidth) && rawWidth >= 0.3 && rawWidth <= 4
-      ? rawWidth
-      : fallback.width;
+    isFiniteNumber(rawW) && rawW >= 0.3 && rawW <= 4 ? rawW : fb.width;
 
   return { length, width };
 }
 
-function distanceBetweenPoints(a: Point, b: Point) {
-  return Math.hypot(a.x - b.x, a.y - b.y);
-}
-
-function dedupePolyline(points: Point[], epsilon = MOTION_POINT_EPS) {
-  const result: Point[] = [];
-
-  points.forEach((point) => {
-    const previous = result[result.length - 1];
-    if (!previous || distanceBetweenPoints(previous, point) > epsilon) {
-      result.push(point);
-    }
+function dedupePolyline(pts: Point[], eps = MOTION_POINT_EPS) {
+  const out: Point[] = [];
+  pts.forEach((p) => {
+    const prev = out[out.length - 1];
+    if (!prev || distPt(prev, p) > eps) out.push(p);
   });
-
-  return result;
+  return out;
 }
 
-function resamplePolyline(points: Point[], targetSamples: number) {
-  if (points.length < 2 || targetSamples <= points.length) {
-    return points;
+function resamplePolyline(pts: Point[], n: number) {
+  if (pts.length < 2 || n <= pts.length) return pts;
+
+  const cum: number[] = [0];
+  for (let i = 1; i < pts.length; i++) {
+    cum.push(cum[i - 1] + distPt(pts[i - 1], pts[i]));
   }
 
-  const cumulative: number[] = [0];
+  const total = cum[cum.length - 1];
+  if (!Number.isFinite(total) || total < 1e-6) return pts;
 
-  for (let index = 1; index < points.length; index += 1) {
-    cumulative.push(
-      cumulative[index - 1] + distanceBetweenPoints(points[index - 1], points[index]),
-    );
-  }
-
-  const totalLength = cumulative[cumulative.length - 1];
-  if (!Number.isFinite(totalLength) || totalLength < 1e-6) {
-    return points;
-  }
-
-  const sampled: Point[] = [];
-
-  for (let sampleIndex = 0; sampleIndex < targetSamples; sampleIndex += 1) {
-    const targetDistance =
-      (sampleIndex / Math.max(targetSamples - 1, 1)) * totalLength;
-
-    let segmentIndex = 0;
-    while (
-      segmentIndex < cumulative.length - 2 &&
-      cumulative[segmentIndex + 1] < targetDistance
-    ) {
-      segmentIndex += 1;
-    }
-
-    const segmentStartDistance = cumulative[segmentIndex];
-    const segmentEndDistance = cumulative[segmentIndex + 1];
-    const segmentLength = Math.max(segmentEndDistance - segmentStartDistance, 1e-6);
-    const alpha = (targetDistance - segmentStartDistance) / segmentLength;
-
-    sampled.push({
-      x: lerp(points[segmentIndex].x, points[segmentIndex + 1].x, alpha),
-      y: lerp(points[segmentIndex].y, points[segmentIndex + 1].y, alpha),
+  const out: Point[] = [];
+  for (let s = 0; s < n; s++) {
+    const d = (s / Math.max(n - 1, 1)) * total;
+    let si = 0;
+    while (si < cum.length - 2 && cum[si + 1] < d) si++;
+    const segLen = Math.max(cum[si + 1] - cum[si], 1e-6);
+    const a = (d - cum[si]) / segLen;
+    out.push({
+      x: lerp(pts[si].x, pts[si + 1].x, a),
+      y: lerp(pts[si].y, pts[si + 1].y, a),
     });
   }
 
-  return dedupePolyline(sampled, 1e-4);
+  return dedupePolyline(out, 1e-4);
 }
 
 function buildHistoryMotionPolyline(
   x: number,
   y: number,
   heading: number,
-  rawMotion: Float32Array | undefined,
-  motionBase: number,
-  motionStride: number,
+  raw: Float32Array | undefined,
+  base: number,
+  stride: number,
 ) {
-  const currentPoint = { x, y };
+  const cur = { x, y };
+  if (!raw || stride < 2) return [cur];
 
-  if (!rawMotion || motionStride < 2) {
-    return [currentPoint];
-  }
-
-  const transformed: Point[] = [];
-
-  for (let k = 0; k < Math.floor(motionStride / 2); k += 1) {
-    const dx = rawMotion[motionBase + k * 2];
-    const dy = rawMotion[motionBase + k * 2 + 1];
-
+  const pts: Point[] = [];
+  for (let k = 0; k < Math.floor(stride / 2); k++) {
+    const dx = raw[base + k * 2];
+    const dy = TRAIL_LOCAL_Y_SIGN * raw[base + k * 2 + 1];
     if (!isFiniteNumber(dx) || !isFiniteNumber(dy)) continue;
-
-    transformed.push({
+    pts.push({
       x: x + Math.cos(heading) * dx - Math.sin(heading) * dy,
       y: y + Math.sin(heading) * dx + Math.cos(heading) * dy,
     });
   }
 
-  const cleaned = dedupePolyline(transformed);
-  if (cleaned.length === 0) {
-    return [currentPoint];
-  }
+  const cleaned = dedupePolyline(pts);
+  if (cleaned.length === 0) return [cur];
 
-  const anchorIndex = cleaned.reduce((bestIndex, point, index) => {
-    const bestDistance = distanceBetweenPoints(cleaned[bestIndex], currentPoint);
-    const currentDistance = distanceBetweenPoints(point, currentPoint);
-    return currentDistance < bestDistance ? index : bestIndex;
-  }, 0);
+  const ai = cleaned.reduce(
+    (bi, p, i) => (distPt(p, cur) < distPt(cleaned[bi], cur) ? i : bi),
+    0,
+  );
 
-  const prefixEndingAtAnchor = cleaned.slice(0, anchorIndex + 1);
-  const suffixEndingAtAnchor = cleaned.slice(anchorIndex).reverse();
+  const pre = cleaned.slice(0, ai + 1);
+  const suf = cleaned.slice(ai).reverse();
+  const ordered =
+    distPt(cleaned[0], cur) >= distPt(cleaned[cleaned.length - 1], cur)
+      ? pre
+      : suf;
 
-  const firstDistance = distanceBetweenPoints(cleaned[0], currentPoint);
-  const lastDistance = distanceBetweenPoints(cleaned[cleaned.length - 1], currentPoint);
-
-  const orderedHistory =
-    firstDistance >= lastDistance ? prefixEndingAtAnchor : suffixEndingAtAnchor;
-
-  const historyTail = orderedHistory[orderedHistory.length - 1];
+  const tail = ordered[ordered.length - 1];
   const merged =
-    distanceBetweenPoints(historyTail, currentPoint) <= CURRENT_ANCHOR_THRESHOLD_M
-      ? [...orderedHistory.slice(0, -1), currentPoint]
-      : [...orderedHistory, currentPoint];
+    distPt(tail, cur) <= CURRENT_ANCHOR_THRESHOLD_M
+      ? [...ordered.slice(0, -1), cur]
+      : [...ordered, cur];
 
-  const finalPolyline = dedupePolyline(merged, 1e-3);
-  const targetSamples = Math.round(clamp(finalPolyline.length * 4, 12, 48));
+  const final = dedupePolyline(merged, 1e-3);
+  return resamplePolyline(final, Math.round(clamp(final.length * 4, 12, 48)));
+}
 
-  return resamplePolyline(finalPolyline, targetSamples);
+function samplePolyline(pts: Point[], t: number) {
+  if (pts.length === 0) return null;
+  if (pts.length === 1) return pts[0];
+
+  const pos = clamp(t, 0, 1) * (pts.length - 1);
+  const i = Math.floor(pos);
+  const ni = Math.min(i + 1, pts.length - 1);
+  const a = pos - i;
+
+  return {
+    x: lerp(pts[i].x, pts[ni].x, a),
+    y: lerp(pts[i].y, pts[ni].y, a),
+  };
+}
+
+function sampleHeading(pts: Point[], t: number) {
+  if (pts.length < 2) return null;
+
+  const pos = clamp(t, 0, 0.999999) * (pts.length - 1);
+  const i = Math.floor(pos);
+  const ni = Math.min(i + 1, pts.length - 1);
+  const dx = pts[ni].x - pts[i].x;
+  const dy = pts[ni].y - pts[i].y;
+
+  if (Math.abs(dx) + Math.abs(dy) < 1e-6) return null;
+  return Math.atan2(dy, dx);
 }
 
 function formatAgentLabel(label: string) {
@@ -411,192 +429,738 @@ function formatAgentLabel(label: string) {
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
-function samplePolyline(points: Point[], t: number) {
-  if (points.length === 0) return null;
-  if (points.length === 1) return points[0];
+/* ================================================================
+   Scene parser
+   ================================================================ */
 
-  const position = clamp(t, 0, 1) * (points.length - 1);
-  const index = Math.floor(position);
-  const nextIndex = Math.min(index + 1, points.length - 1);
-  const alpha = position - index;
-
-  return {
-    x: lerp(points[index].x, points[nextIndex].x, alpha),
-    y: lerp(points[index].y, points[nextIndex].y, alpha),
-  };
-}
-
-function sampleHeadingFromPolyline(points: Point[], t: number) {
-  if (points.length < 2) return null;
-
-  const position = clamp(t, 0, 0.999999) * (points.length - 1);
-  const index = Math.floor(position);
-  const nextIndex = Math.min(index + 1, points.length - 1);
-
-  const dx = points[nextIndex].x - points[index].x;
-  const dy = points[nextIndex].y - points[index].y;
-
-  if (!Number.isFinite(dx) || !Number.isFinite(dy) || Math.abs(dx) + Math.abs(dy) < 1e-6) {
-    return null;
-  }
-
-  return Math.atan2(dy, dx);
-}
-
-function pointInsideAgent(point: Point, agent: ParsedAgent) {
-  const dx = point.x - agent.x;
-  const dy = point.y - agent.y;
-
-  const c = Math.cos(agent.heading);
-  const s = Math.sin(agent.heading);
-
-  const localX = dx * c + dy * s;
-  const localY = -dx * s + dy * c;
-
-  return Math.abs(localX) <= agent.length / 2 && Math.abs(localY) <= agent.width / 2;
-}
-
-function drawRoundedRectPath(
-  context: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  radius: number,
-) {
-  const r = Math.max(0, Math.min(radius, width / 2, height / 2));
-
-  context.beginPath();
-  context.moveTo(x + r, y);
-  context.arcTo(x + width, y, x + width, y + height, r);
-  context.arcTo(x + width, y + height, x, y + height, r);
-  context.arcTo(x, y + height, x, y, r);
-  context.arcTo(x, y, x + width, y, r);
-  context.closePath();
-}
-
-function drawPolyline(
-  context: CanvasRenderingContext2D,
-  points: Point[],
-  camera: Camera,
-) {
-  if (points.length < 2) return;
-
-  context.beginPath();
-  points.forEach((point, index) => {
-    const screen = worldToScreen(point.x, point.y, camera);
-    if (index === 0) {
-      context.moveTo(screen.x, screen.y);
-    } else {
-      context.lineTo(screen.x, screen.y);
-    }
-  });
-  context.stroke();
-}
-
-function drawAgentShape(
-  context: CanvasRenderingContext2D,
-  camera: Camera,
-  palette: Palette,
-  options: {
-    x: number;
-    y: number;
-    heading: number;
-    length: number;
-    width: number;
-    bodyColor: string;
-    isEgo?: boolean;
-    ghost?: boolean;
-    highlight?: boolean;
-  },
-) {
-  const {
-    x,
-    y,
-    heading,
-    length,
-    width,
-    bodyColor,
-    isEgo = false,
-    ghost = false,
-    highlight = false,
-  } = options;
-
-  const center = worldToScreen(x, y, camera);
-  const pxLength = Math.max(length * camera.scale, isEgo ? 18 : 10);
-  const pxWidth = Math.max(width * camera.scale, isEgo ? 9 : 6);
-  const radius = Math.min(pxWidth * 0.35, 8);
-
-  context.save();
-  context.translate(center.x, center.y);
-  context.rotate(-heading);
-
-  if (!ghost) {
-    context.save();
-    context.translate(1.5, 2.5);
-    drawRoundedRectPath(context, -pxLength / 2, -pxWidth / 2, pxLength, pxWidth, radius);
-    context.fillStyle = palette.agentShadow;
-    context.fill();
-    context.restore();
-  }
-
-  context.globalAlpha = ghost ? 0.42 : 1;
-
-  drawRoundedRectPath(context, -pxLength / 2, -pxWidth / 2, pxLength, pxWidth, radius);
-  context.fillStyle = bodyColor;
-  context.fill();
-
-  drawRoundedRectPath(context, -pxLength / 2, -pxWidth / 2, pxLength, pxWidth, radius);
-  context.lineWidth = highlight ? 2.4 : isEgo ? 2.2 : 1.4;
-  context.strokeStyle = highlight ? palette.hover : palette.outline;
-  context.stroke();
-
-  drawRoundedRectPath(
-    context,
-    -pxLength * 0.12,
-    -pxWidth * 0.28,
-    pxLength * 0.42,
-    pxWidth * 0.56,
-    Math.min(pxWidth * 0.24, 5),
+function parseScene(scene: LoadedScene): ParsedScene {
+  const meta = scene.meta;
+  const ptsPerLane =
+    meta.buffers.lanes.shape[1] ?? meta.counts.num_points_per_lane;
+  const numLanes = Math.min(
+    meta.counts.num_lanes,
+    Math.floor(scene.lanes.length / Math.max(ptsPerLane * 2, 1)),
   );
-  context.fillStyle = palette.roofLight;
-  context.fill();
+  const routeN = Math.min(
+    meta.counts.route_points,
+    Math.floor(scene.route.length / 2),
+  );
+  const tileN = Math.min(
+    meta.counts.tiles,
+    Math.floor(scene.tileCorners.length / 8),
+  );
 
-  context.beginPath();
-  context.moveTo(pxLength * 0.16, 0);
-  context.lineTo(pxLength * 0.46, -pxWidth * 0.18);
-  context.lineTo(pxLength * 0.46, pxWidth * 0.18);
-  context.closePath();
-  context.fillStyle = palette.heading;
-  context.fill();
+  const stateStride = lastDim(
+    meta.buffers.agent_states.shape,
+    Math.max(
+      1,
+      Math.floor(scene.agentStates.length / Math.max(meta.counts.num_agents, 1)),
+    ),
+  );
 
-  if (highlight) {
-    context.beginPath();
-    context.ellipse(0, 0, pxLength * 0.75, pxWidth * 0.92, 0, 0, Math.PI * 2);
-    context.lineWidth = 1.5;
-    context.strokeStyle = palette.hover;
-    context.stroke();
+  const motionStride =
+    scene.agentMotion && meta.buffers.agent_motion
+      ? lastDim(
+          meta.buffers.agent_motion.shape,
+          Math.max(
+            0,
+            Math.floor(
+              scene.agentMotion.length / Math.max(meta.counts.num_agents, 1),
+            ),
+          ),
+        )
+      : 0;
+
+  const numAgents = Math.min(
+    meta.counts.num_agents,
+    scene.agentTypes.length,
+    Math.floor(scene.agentStates.length / Math.max(stateStride, 1)),
+  );
+
+  const typeLabels =
+    meta.buffers.agent_types.labels ?? ["vehicle", "pedestrian", "cyclist"];
+
+  const lanes: Point[][] = [];
+  for (let li = 0; li < numLanes; li++) {
+    const pts: Point[] = [];
+    for (let pi = 0; pi < ptsPerLane; pi++) {
+      const b = (li * ptsPerLane + pi) * 2;
+      const px = scene.lanes[b];
+      const py = scene.lanes[b + 1];
+      if (isFiniteNumber(px) && isFiniteNumber(py)) pts.push({ x: px, y: py });
+    }
+    lanes.push(pts);
   }
 
-  if (isEgo && !ghost) {
-    context.beginPath();
-    context.moveTo(-pxLength * 0.18, -pxWidth / 2);
-    context.lineTo(-pxLength * 0.18, pxWidth / 2);
-    context.lineWidth = 1.5;
-    context.strokeStyle = palette.heading;
-    context.stroke();
+  const route: Point[] = [];
+  for (let i = 0; i < routeN; i++) {
+    const px = scene.route[i * 2];
+    const py = scene.route[i * 2 + 1];
+    if (isFiniteNumber(px) && isFiniteNumber(py)) route.push({ x: px, y: py });
   }
 
-  context.restore();
+  const tiles: Point[][] = [];
+  for (let t = 0; t < tileN; t++) {
+    const corners: Point[] = [];
+    for (let c = 0; c < 4; c++) {
+      const px = scene.tileCorners[t * 8 + c * 2];
+      const py = scene.tileCorners[t * 8 + c * 2 + 1];
+      if (isFiniteNumber(px) && isFiniteNumber(py))
+        corners.push({ x: px, y: py });
+    }
+    tiles.push(corners);
+  }
+
+  const agents: ParsedAgent[] = [];
+  for (let ai = 0; ai < numAgents; ai++) {
+    const sb = ai * stateStride;
+    const ax = scene.agentStates[sb + STATE_LAYOUT.x];
+    const ay = scene.agentStates[sb + STATE_LAYOUT.y];
+    if (!isFiniteNumber(ax) || !isFiniteNumber(ay)) continue;
+
+    const hd = resolveHeadingFromAgentState(
+      scene.agentStates,
+      sb,
+      stateStride,
+    );
+    const ti = scene.agentTypes[ai] ?? 0;
+    const label = typeLabels[ti] ?? "vehicle";
+
+    const rL =
+      STATE_LAYOUT.length < stateStride
+        ? scene.agentStates[sb + STATE_LAYOUT.length]
+        : undefined;
+    const rW =
+      STATE_LAYOUT.width < stateStride
+        ? scene.agentStates[sb + STATE_LAYOUT.width]
+        : undefined;
+
+    const { length, width } = resolveAgentSize(label, rL, rW);
+
+    const motion =
+      scene.agentMotion && motionStride >= 2
+        ? buildHistoryMotionPolyline(
+            ax,
+            ay,
+            hd,
+            scene.agentMotion,
+            ai * motionStride,
+            motionStride,
+          )
+        : [{ x: ax, y: ay }];
+
+    agents.push({
+      id: ai,
+      x: ax,
+      y: ay,
+      heading: hd,
+      length,
+      width,
+      label,
+      isEgo: ai === meta.ego_index,
+      motion,
+    });
+  }
+
+  const enumMap = meta.buffers.lane_connections.enum;
+  const connN = Math.min(
+    scene.laneConnSrc.length,
+    scene.laneConnDst.length,
+    scene.laneConnType.length,
+  );
+
+  const connections: ParsedConnection[] = [];
+  for (let ci = 0; ci < connN; ci++) {
+    const sl = scene.laneConnSrc[ci];
+    const dl = scene.laneConnDst[ci];
+    const tv = scene.laneConnType[ci];
+
+    if (sl >= lanes.length || dl >= lanes.length) continue;
+    if (lanes[sl].length === 0 || lanes[dl].length === 0) continue;
+
+    const kind: ParsedConnectionKind =
+      tv === enumMap.succ
+        ? "succ"
+        : tv === enumMap.left
+          ? "left"
+          : tv === enumMap.right
+            ? "right"
+            : "other";
+
+    connections.push({
+      srcTail: lanes[sl][lanes[sl].length - 1],
+      dstHead: lanes[dl][0],
+      kind,
+    });
+  }
+
+  return { meta, agents, lanes, route, tiles, connections };
 }
+
+/* ================================================================
+   Theme palette
+   ================================================================ */
+
+function isDarkTheme() {
+  const t = document.documentElement.dataset.theme;
+  if (t === "dark") return true;
+  if (t === "light") return false;
+  return window.matchMedia("(prefers-color-scheme: dark)").matches;
+}
+
+function getPalette(dark: boolean): ThreePalette {
+  return dark
+    ? {
+        background: 0x111118,
+        ground: 0x18181b,
+        gridLine: 0x2a2a30,
+        roadSurface: 0x3a3a42,
+        laneCenter: 0x808090,
+        route: 0x38bdf8,
+        tileFill: 0x3b82f6,
+        tileOpacity: 0.08,
+        connection: 0x22c55e,
+        ego: 0xfb923c,
+        vehicle: 0xc4c4cc,
+        pedestrian: 0x4ade80,
+        cyclist: 0xfacc15,
+        trail: 0x38bdf8,
+        highlight: 0x60a5fa,
+        headingIndicator: 0xfafafa,
+      }
+    : {
+        background: 0xf4f4f5,
+        ground: 0xe4e4e7,
+        gridLine: 0xcccccc,
+        roadSurface: 0x6b7280,
+        laneCenter: 0xffffff,
+        route: 0x0284c7,
+        tileFill: 0x3b82f6,
+        tileOpacity: 0.1,
+        connection: 0x22c55e,
+        ego: 0xea580c,
+        vehicle: 0x475569,
+        pedestrian: 0x16a34a,
+        cyclist: 0xca8a04,
+        trail: 0x0284c7,
+        highlight: 0x2563eb,
+        headingIndicator: 0x1e293b,
+      };
+}
+
+/* ================================================================
+   Three.js helpers
+   ================================================================ */
+
+function toMaterialArray(
+  material: THREE.Material | THREE.Material[],
+): THREE.Material[] {
+  return Array.isArray(material) ? material : [material];
+}
+
+function isDisposableRenderable(
+  child: THREE.Object3D,
+): child is THREE.Mesh | THREE.Line | THREE.LineSegments {
+  return (
+    child instanceof THREE.Mesh ||
+    child instanceof THREE.Line ||
+    child instanceof THREE.LineSegments
+  );
+}
+
+function disposeGroup(obj: THREE.Object3D) {
+  obj.traverse((child: THREE.Object3D) => {
+    if (!isDisposableRenderable(child)) return;
+    child.geometry.dispose();
+    toMaterialArray(child.material).forEach((m: THREE.Material) => {
+      m.dispose();
+    });
+  });
+}
+
+function agentBodyColor(agent: ParsedAgent, p: ThreePalette) {
+  if (agent.isEgo) return p.ego;
+  if (agent.label === "pedestrian") return p.pedestrian;
+  if (agent.label === "cyclist") return p.cyclist;
+  return p.vehicle;
+}
+
+/* ================================================================
+   Scene-building functions
+   ================================================================ */
+
+function buildGround(
+  bbox: [number, number, number, number],
+  p: ThreePalette,
+): THREE.Group {
+  const g = new THREE.Group();
+  const [x0, y0, x1, y1] = bbox;
+  const cx = (x0 + x1) / 2;
+  const cz = -(y0 + y1) / 2;
+  const span = Math.max(x1 - x0, y1 - y0, 100) * 2.5;
+
+  const plane = new THREE.Mesh(
+    new THREE.PlaneGeometry(span, span),
+    new THREE.MeshStandardMaterial({
+      color: p.ground,
+      roughness: 0.95,
+      metalness: 0,
+      side: THREE.DoubleSide,
+    }),
+  );
+  plane.rotation.x = -Math.PI / 2;
+  plane.position.set(cx, LAYER_Y.ground, cz);
+  plane.receiveShadow = true;
+  g.add(plane);
+
+  const divs = Math.max(10, Math.floor(span / 10));
+  const grid = new THREE.GridHelper(span, divs, p.gridLine, p.gridLine);
+  grid.position.set(cx, LAYER_Y.ground + 0.005, cz);
+
+  const gm = toMaterialArray(grid.material);
+  gm.forEach((m: THREE.Material) => {
+    m.transparent = true;
+    m.opacity = 0.25;
+  });
+
+  g.add(grid);
+  return g;
+}
+
+function buildLanes(
+  lanes: Point[][],
+  laneWidth: number,
+  p: ThreePalette,
+): THREE.Group {
+  const g = new THREE.Group();
+
+  const rPos: number[] = [];
+  const rNor: number[] = [];
+  const rIdx: number[] = [];
+  let vOff = 0;
+
+  for (const lane of lanes) {
+    if (lane.length < 2) continue;
+
+    for (let i = 0; i < lane.length; i++) {
+      let tx: number;
+      let ty: number;
+
+      if (i === 0) {
+        tx = lane[1].x - lane[0].x;
+        ty = lane[1].y - lane[0].y;
+      } else if (i === lane.length - 1) {
+        tx = lane[i].x - lane[i - 1].x;
+        ty = lane[i].y - lane[i - 1].y;
+      } else {
+        tx = lane[i + 1].x - lane[i - 1].x;
+        ty = lane[i + 1].y - lane[i - 1].y;
+      }
+
+      const len = Math.sqrt(tx * tx + ty * ty) || 1;
+      const nx = (-ty / len) * laneWidth * 0.5;
+      const ny = (tx / len) * laneWidth * 0.5;
+
+      rPos.push(lane[i].x + nx, LAYER_Y.road, -(lane[i].y + ny));
+      rPos.push(lane[i].x - nx, LAYER_Y.road, -(lane[i].y - ny));
+      rNor.push(0, 1, 0, 0, 1, 0);
+    }
+
+    for (let i = 0; i < lane.length - 1; i++) {
+      const b = vOff + i * 2;
+      rIdx.push(b, b + 2, b + 1, b + 1, b + 2, b + 3);
+    }
+
+    vOff += lane.length * 2;
+  }
+
+  if (rPos.length) {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.Float32BufferAttribute(rPos, 3));
+    geo.setAttribute("normal", new THREE.Float32BufferAttribute(rNor, 3));
+    geo.setIndex(rIdx);
+    g.add(
+      new THREE.Mesh(
+        geo,
+        new THREE.MeshStandardMaterial({
+          color: p.roadSurface,
+          roughness: 0.85,
+          side: THREE.DoubleSide,
+        }),
+      ),
+    );
+  }
+
+  const lPos: number[] = [];
+  for (const lane of lanes) {
+    for (let i = 0; i < lane.length - 1; i++) {
+      lPos.push(lane[i].x, LAYER_Y.laneCenter, -lane[i].y);
+      lPos.push(lane[i + 1].x, LAYER_Y.laneCenter, -lane[i + 1].y);
+    }
+  }
+
+  if (lPos.length) {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.Float32BufferAttribute(lPos, 3));
+    g.add(
+      new THREE.LineSegments(
+        geo,
+        new THREE.LineBasicMaterial({
+          color: p.laneCenter,
+          transparent: true,
+          opacity: 0.55,
+        }),
+      ),
+    );
+  }
+
+  return g;
+}
+
+function buildRoute(route: Point[], p: ThreePalette): THREE.Group {
+  const g = new THREE.Group();
+  if (route.length < 2) return g;
+
+  const pos: number[] = [];
+  for (const pt of route) pos.push(pt.x, LAYER_Y.route, -pt.y);
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  g.add(new THREE.Line(geo, new THREE.LineBasicMaterial({ color: p.route })));
+
+  const rP: number[] = [];
+  const rN: number[] = [];
+  const rI: number[] = [];
+  const w = 1.4;
+
+  for (let i = 0; i < route.length; i++) {
+    let tx: number;
+    let ty: number;
+
+    if (i === 0) {
+      tx = route[1].x - route[0].x;
+      ty = route[1].y - route[0].y;
+    } else if (i === route.length - 1) {
+      tx = route[i].x - route[i - 1].x;
+      ty = route[i].y - route[i - 1].y;
+    } else {
+      tx = route[i + 1].x - route[i - 1].x;
+      ty = route[i + 1].y - route[i - 1].y;
+    }
+
+    const len = Math.sqrt(tx * tx + ty * ty) || 1;
+    const nx = (-ty / len) * w;
+    const ny = (tx / len) * w;
+
+    rP.push(route[i].x + nx, LAYER_Y.route - 0.005, -(route[i].y + ny));
+    rP.push(route[i].x - nx, LAYER_Y.route - 0.005, -(route[i].y - ny));
+    rN.push(0, 1, 0, 0, 1, 0);
+  }
+
+  for (let i = 0; i < route.length - 1; i++) {
+    const b = i * 2;
+    rI.push(b, b + 2, b + 1, b + 1, b + 2, b + 3);
+  }
+
+  if (rP.length) {
+    const geo2 = new THREE.BufferGeometry();
+    geo2.setAttribute("position", new THREE.Float32BufferAttribute(rP, 3));
+    geo2.setAttribute("normal", new THREE.Float32BufferAttribute(rN, 3));
+    geo2.setIndex(rI);
+    g.add(
+      new THREE.Mesh(
+        geo2,
+        new THREE.MeshBasicMaterial({
+          color: p.route,
+          transparent: true,
+          opacity: 0.18,
+          side: THREE.DoubleSide,
+          depthWrite: false,
+        }),
+      ),
+    );
+  }
+
+  return g;
+}
+
+function buildTiles(tiles: Point[][], p: ThreePalette): THREE.Group {
+  const g = new THREE.Group();
+  const vPos: number[] = [];
+  const vNor: number[] = [];
+  const vIdx: number[] = [];
+  let off = 0;
+
+  for (const tile of tiles) {
+    if (tile.length < 3) continue;
+    for (let c = 0; c < tile.length; c++) {
+      vPos.push(tile[c].x, LAYER_Y.tile, -tile[c].y);
+      vNor.push(0, 1, 0);
+    }
+    if (tile.length >= 3) {
+      vIdx.push(off, off + 1, off + 2);
+      if (tile.length >= 4) vIdx.push(off, off + 2, off + 3);
+    }
+    off += tile.length;
+  }
+
+  if (vPos.length) {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.Float32BufferAttribute(vPos, 3));
+    geo.setAttribute("normal", new THREE.Float32BufferAttribute(vNor, 3));
+    geo.setIndex(vIdx);
+    g.add(
+      new THREE.Mesh(
+        geo,
+        new THREE.MeshStandardMaterial({
+          color: p.tileFill,
+          opacity: p.tileOpacity,
+          transparent: true,
+          side: THREE.DoubleSide,
+          depthWrite: false,
+        }),
+      ),
+    );
+  }
+
+  const ePos: number[] = [];
+  for (const tile of tiles) {
+    if (tile.length < 3) continue;
+    for (let c = 0; c < tile.length; c++) {
+      const nc = (c + 1) % tile.length;
+      ePos.push(tile[c].x, LAYER_Y.tile + 0.01, -tile[c].y);
+      ePos.push(tile[nc].x, LAYER_Y.tile + 0.01, -tile[nc].y);
+    }
+  }
+
+  if (ePos.length) {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.Float32BufferAttribute(ePos, 3));
+    g.add(
+      new THREE.LineSegments(
+        geo,
+        new THREE.LineBasicMaterial({
+          color: p.tileFill,
+          transparent: true,
+          opacity: 0.35,
+        }),
+      ),
+    );
+  }
+
+  return g;
+}
+
+function buildConnections(
+  conns: ParsedConnection[],
+  p: ThreePalette,
+): THREE.Group {
+  const g = new THREE.Group();
+  const pos: number[] = [];
+
+  for (const c of conns) {
+    if (c.kind === "other") continue;
+    pos.push(c.srcTail.x, LAYER_Y.connection, -c.srcTail.y);
+    pos.push(c.dstHead.x, LAYER_Y.connection, -c.dstHead.y);
+  }
+
+  if (pos.length) {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    g.add(
+      new THREE.LineSegments(
+        geo,
+        new THREE.LineBasicMaterial({
+          color: p.connection,
+          transparent: true,
+          opacity: 0.5,
+        }),
+      ),
+    );
+  }
+
+  return g;
+}
+
+type AgentBuildResult = {
+  group: THREE.Group;
+  meshes: THREE.Mesh[];
+};
+
+function buildAgents(agents: ParsedAgent[], p: ThreePalette): AgentBuildResult {
+  const group = new THREE.Group();
+  const meshes: THREE.Mesh[] = [];
+
+  for (const ag of agents) {
+    const h = AGENT_H[ag.label] ?? 1.5;
+    const col = agentBodyColor(ag, p);
+
+    const box = new THREE.Mesh(
+      new THREE.BoxGeometry(ag.length, h, ag.width),
+      new THREE.MeshStandardMaterial({
+        color: col,
+        roughness: 0.5,
+        metalness: 0.15,
+      }),
+    );
+    box.position.set(ag.x, h / 2, -ag.y);
+    box.rotation.y = ag.heading + AGENT_YAW_OFFSET;
+    box.castShadow = true;
+    box.userData = { agentData: ag };
+    group.add(box);
+    meshes.push(box);
+
+    const sr = Math.max(ag.length, ag.width) * 0.55;
+    const shadow = new THREE.Mesh(
+      new THREE.CircleGeometry(sr, 16),
+      new THREE.MeshBasicMaterial({
+        color: 0x000000,
+        transparent: true,
+        opacity: 0.12,
+        depthWrite: false,
+      }),
+    );
+    shadow.rotation.x = -Math.PI / 2;
+    shadow.position.set(ag.x, 0.003, -ag.y);
+    group.add(shadow);
+
+    const coneH = ag.length * 0.18;
+    const coneR = ag.width * 0.18;
+    const cone = new THREE.Mesh(
+      new THREE.ConeGeometry(coneR, coneH, 6),
+      new THREE.MeshStandardMaterial({ color: p.headingIndicator }),
+    );
+    cone.geometry.rotateZ(-Math.PI / 2);
+    cone.position.set(ag.length * 0.38, h * 0.72, 0);
+    box.add(cone);
+  }
+
+  return { group, meshes };
+}
+
+type TrailBuildResult = {
+  linesGroup: THREE.Group;
+  ghostGroup: THREE.Group;
+  ghostEntries: { mesh: THREE.Mesh; agent: ParsedAgent }[];
+};
+
+function buildTrails(agents: ParsedAgent[], p: ThreePalette): TrailBuildResult {
+  const linesGroup = new THREE.Group();
+  const ghostGroup = new THREE.Group();
+  const ghostEntries: { mesh: THREE.Mesh; agent: ParsedAgent }[] = [];
+
+  const pos: number[] = [];
+  for (const ag of agents) {
+    if (ag.motion.length < 2) continue;
+    for (let i = 0; i < ag.motion.length - 1; i++) {
+      pos.push(ag.motion[i].x, LAYER_Y.trail, -ag.motion[i].y);
+      pos.push(ag.motion[i + 1].x, LAYER_Y.trail, -ag.motion[i + 1].y);
+    }
+  }
+
+  if (pos.length) {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    linesGroup.add(
+      new THREE.LineSegments(
+        geo,
+        new THREE.LineBasicMaterial({
+          color: p.trail,
+          transparent: true,
+          opacity: 0.45,
+        }),
+      ),
+    );
+  }
+
+  for (const ag of agents) {
+    if (ag.motion.length < 2) continue;
+    const h = AGENT_H[ag.label] ?? 1.5;
+    const col = agentBodyColor(ag, p);
+    const mesh = new THREE.Mesh(
+      new THREE.BoxGeometry(ag.length, h, ag.width),
+      new THREE.MeshStandardMaterial({
+        color: col,
+        transparent: true,
+        opacity: 0.32,
+        depthWrite: false,
+      }),
+    );
+    mesh.visible = false;
+    ghostGroup.add(mesh);
+    ghostEntries.push({ mesh, agent: ag });
+  }
+
+  return { linesGroup, ghostGroup, ghostEntries };
+}
+
+function buildHighlight(p: ThreePalette): THREE.Mesh {
+  const mesh = new THREE.Mesh(
+    new THREE.BoxGeometry(1, 1, 1),
+    new THREE.MeshBasicMaterial({
+      color: p.highlight,
+      transparent: true,
+      opacity: 0.22,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    }),
+  );
+  mesh.visible = false;
+  mesh.renderOrder = 999;
+  return mesh;
+}
+
+function fitCamera(
+  cam: THREE.PerspectiveCamera,
+  ctrl: OrbitControls,
+  bbox: [number, number, number, number],
+  mode: "perspective" | "top" = "perspective",
+) {
+  const [x0, y0, x1, y1] = bbox;
+  const cx = (x0 + x1) / 2;
+  const cz = -(y0 + y1) / 2;
+  const ext = Math.max(x1 - x0, y1 - y0, 50);
+  const target = new THREE.Vector3(cx, 0, cz);
+
+  ctrl.target.copy(target);
+  if (mode === "top") {
+    cam.position.set(cx, ext * 1.0, cz + 0.01);
+  } else {
+    cam.position.set(cx + ext * 0.12, ext * 0.55, cz + ext * 0.35);
+  }
+  cam.lookAt(target);
+  ctrl.update();
+}
+
+/* ================================================================
+   React component
+   ================================================================ */
+
+type ThreeState = {
+  renderer: THREE.WebGLRenderer;
+  scene: THREE.Scene;
+  camera: THREE.PerspectiveCamera;
+  controls: OrbitControls;
+  rafId: number;
+  root: THREE.Group | null;
+  routeGroup: THREE.Group | null;
+  tilesGroup: THREE.Group | null;
+  connsGroup: THREE.Group | null;
+  trailLinesGroup: THREE.Group | null;
+  ghostGroup: THREE.Group | null;
+  agentMeshes: THREE.Mesh[];
+  ghostEntries: { mesh: THREE.Mesh; agent: ParsedAgent }[];
+  highlight: THREE.Mesh | null;
+  isDragging: boolean;
+};
 
 export default function VectorSceneViewerClient({ indexUrl }: Props) {
   const [indexData, setIndexData] = useState<SceneIndex | null>(null);
   const [selectedId, setSelectedId] = useState("");
-  const [scene, setScene] = useState<LoadedScene | null>(null);
+  const [sceneData, setSceneData] = useState<LoadedScene | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [themeVersion, setThemeVersion] = useState(0);
+  const [themeVer, setThemeVer] = useState(0);
 
   const [showRoute, setShowRoute] = useState(true);
   const [showTiles, setShowTiles] = useState(true);
@@ -604,165 +1168,110 @@ export default function VectorSceneViewerClient({ indexUrl }: Props) {
   const [showMotion, setShowMotion] = useState(true);
   const [animateMotion, setAnimateMotion] = useState(false);
   const [motionProgress, setMotionProgress] = useState(0.35);
-
-  const [camera, setCamera] = useState<Camera | null>(null);
   const [hoverState, setHoverState] = useState<HoverState | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
 
-  const stageRef = useRef<HTMLDivElement | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const cameraRef = useRef<Camera | null>(null);
-  const dragRef = useRef({
-    active: false,
-    pointerId: -1,
-    lastClientX: 0,
-    lastClientY: 0,
-  });
+  const mountRef = useRef<HTMLDivElement>(null);
+  const threeRef = useRef<ThreeState | null>(null);
 
-  const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
+  const parsedScene = useMemo(
+    () => (sceneData ? parseScene(sceneData) : null),
+    [sceneData],
+  );
+
+  const selectedEntry = useMemo(
+    () => indexData?.scenes.find((s) => s.id === selectedId) ?? null,
+    [indexData, selectedId],
+  );
+
+  const sceneIdx = useMemo(
+    () => indexData?.scenes.findIndex((s) => s.id === selectedId) ?? -1,
+    [indexData, selectedId],
+  );
+
+  const totalScenes = indexData?.scenes.length ?? 0;
+
+  const goPrevScene = useCallback(() => {
+    if (!indexData || totalScenes <= 1) return;
+    const ni = sceneIdx <= 0 ? totalScenes - 1 : sceneIdx - 1;
+    setSelectedId(indexData.scenes[ni].id);
+  }, [indexData, sceneIdx, totalScenes]);
+
+  const goNextScene = useCallback(() => {
+    if (!indexData || totalScenes <= 1) return;
+    const ni = sceneIdx >= totalScenes - 1 ? 0 : sceneIdx + 1;
+    setSelectedId(indexData.scenes[ni].id);
+  }, [indexData, sceneIdx, totalScenes]);
 
   useEffect(() => {
-    cameraRef.current = camera;
-  }, [camera]);
+    let cancel = false;
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadIndex() {
+    (async () => {
       try {
-        const absoluteIndexUrl = new URL(indexUrl, window.location.href).toString();
-        const data = await fetchJson<SceneIndex>(absoluteIndexUrl);
-
-        if (cancelled) return;
-
+        const url = new URL(indexUrl, window.location.href).toString();
+        const data = await fetchJson<SceneIndex>(url);
+        if (cancel) return;
         setIndexData(data);
         if (data.scenes.length > 0) {
-          setSelectedId((current) => current || data.scenes[0].id);
+          setSelectedId((c) => c || data.scenes[0].id);
         }
-      } catch (loadError) {
-        if (!cancelled) {
-          setError(
-            loadError instanceof Error ? loadError.message : "Failed to load scene index.",
-          );
+      } catch (e) {
+        if (!cancel) {
+          setError(e instanceof Error ? e.message : "Failed to load index.");
         }
       }
-    }
-
-    void loadIndex();
+    })();
 
     return () => {
-      cancelled = true;
+      cancel = true;
     };
   }, [indexUrl]);
 
   useEffect(() => {
-    const node = stageRef.current;
-    if (!node) return;
+    if (!indexData || !selectedId) return;
 
-    const updateSize = () => {
-      setViewportSize({
-        width: node.clientWidth,
-        height: node.clientHeight,
-      });
-    };
+    const entry = indexData.scenes.find((s) => s.id === selectedId);
+    if (!entry) return;
 
-    updateSize();
+    const absIndex = new URL(indexUrl, window.location.href).toString();
+    let cancel = false;
 
-    const observer = new ResizeObserver(updateSize);
-    observer.observe(node);
-
-    return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
-    const handleThemeChange = () => setThemeVersion((value) => value + 1);
-
-    const observer = new MutationObserver(handleThemeChange);
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ["data-theme"],
-    });
-
-    const media = window.matchMedia("(prefers-color-scheme: dark)");
-    media.addEventListener("change", handleThemeChange);
-
-    return () => {
-      observer.disconnect();
-      media.removeEventListener("change", handleThemeChange);
-    };
-  }, []);
-
-  useEffect(() => {
-    const currentIndexData = indexData;
-    if (!currentIndexData || !selectedId) return;
-
-    const selectedEntry = currentIndexData.scenes.find((item) => item.id === selectedId);
-    if (!selectedEntry) return;
-
-    const absoluteIndexUrl = new URL(indexUrl, window.location.href).toString();
-    let cancelled = false;
-
-    async function loadScene(entry: IndexSceneEntry) {
+    (async () => {
       setLoading(true);
       setError("");
-      setScene(null);
-      setCamera(null);
+      setSceneData(null);
       setHoverState(null);
 
       try {
-        const sceneUrl = new URL(entry.path, absoluteIndexUrl).toString();
+        const sceneUrl = new URL(entry.path, absIndex).toString();
         const meta = await fetchJson<SceneMeta>(sceneUrl);
+        const b = meta.buffers;
+        const u = (f: string, d: DType) =>
+          fetchTypedArray(new URL(f, sceneUrl).toString(), d);
 
+        /* ★ FIX 2: as unknown as [...] 双重断言 */
         const [
           agentStates,
           agentTypes,
           lanes,
           route,
           tileCorners,
-          laneConnSrc,
-          laneConnDst,
-          laneConnType,
+          lcs,
+          lcd,
+          lct,
           agentMotion,
         ] = (await Promise.all([
-          fetchTypedArray(
-            new URL(meta.buffers.agent_states.file, sceneUrl).toString(),
-            meta.buffers.agent_states.dtype,
-          ),
-          fetchTypedArray(
-            new URL(meta.buffers.agent_types.file, sceneUrl).toString(),
-            meta.buffers.agent_types.dtype,
-          ),
-          fetchTypedArray(
-            new URL(meta.buffers.lanes.file, sceneUrl).toString(),
-            meta.buffers.lanes.dtype,
-          ),
-          fetchTypedArray(
-            new URL(meta.buffers.route.file, sceneUrl).toString(),
-            meta.buffers.route.dtype,
-          ),
-          fetchTypedArray(
-            new URL(meta.buffers.tile_corners.file, sceneUrl).toString(),
-            meta.buffers.tile_corners.dtype,
-          ),
-          fetchTypedArray(
-            new URL(meta.buffers.lane_connections.src.file, sceneUrl).toString(),
-            meta.buffers.lane_connections.src.dtype,
-          ),
-          fetchTypedArray(
-            new URL(meta.buffers.lane_connections.dst.file, sceneUrl).toString(),
-            meta.buffers.lane_connections.dst.dtype,
-          ),
-          fetchTypedArray(
-            new URL(meta.buffers.lane_connections.type.file, sceneUrl).toString(),
-            meta.buffers.lane_connections.type.dtype,
-          ),
-          meta.buffers.agent_motion
-            ? fetchTypedArray(
-                new URL(meta.buffers.agent_motion.file, sceneUrl).toString(),
-                meta.buffers.agent_motion.dtype,
-              )
+          u(b.agent_states.file, b.agent_states.dtype),
+          u(b.agent_types.file, b.agent_types.dtype),
+          u(b.lanes.file, b.lanes.dtype),
+          u(b.route.file, b.route.dtype),
+          u(b.tile_corners.file, b.tile_corners.dtype),
+          u(b.lane_connections.src.file, b.lane_connections.src.dtype),
+          u(b.lane_connections.dst.file, b.lane_connections.dst.dtype),
+          u(b.lane_connections.type.file, b.lane_connections.type.dtype),
+          b.agent_motion
+            ? u(b.agent_motion.file, b.agent_motion.dtype)
             : Promise.resolve(undefined),
-        ])) as [
+        ])) as unknown as [
           Float32Array,
           Uint8Array,
           Float32Array,
@@ -774,9 +1283,9 @@ export default function VectorSceneViewerClient({ indexUrl }: Props) {
           Float32Array | undefined,
         ];
 
-        if (cancelled) return;
+        if (cancel) return;
 
-        setScene({
+        setSceneData({
           meta,
           agentStates,
           agentTypes,
@@ -784,687 +1293,365 @@ export default function VectorSceneViewerClient({ indexUrl }: Props) {
           lanes,
           route,
           tileCorners,
-          laneConnSrc,
-          laneConnDst,
-          laneConnType,
+          laneConnSrc: lcs,
+          laneConnDst: lcd,
+          laneConnType: lct,
         });
-      } catch (loadError) {
-        if (!cancelled) {
-          setError(loadError instanceof Error ? loadError.message : "Failed to load scene.");
+      } catch (e) {
+        if (!cancel) {
+          setError(e instanceof Error ? e.message : "Failed to load scene.");
         }
       } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
+        if (!cancel) setLoading(false);
       }
-    }
-
-    void loadScene(selectedEntry);
+    })();
 
     return () => {
-      cancelled = true;
+      cancel = true;
     };
   }, [indexData, selectedId, indexUrl]);
 
-  const selectedIndexEntry = useMemo(
-    () => indexData?.scenes.find((item) => item.id === selectedId) ?? null,
-    [indexData, selectedId],
-  );
+  useEffect(() => {
+    const bump = () => setThemeVer((v) => v + 1);
 
-  const parsedScene = useMemo<ParsedScene | null>(() => {
-    if (!scene) return null;
+    const mo = new MutationObserver(bump);
+    mo.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
 
-    const meta = scene.meta;
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    mq.addEventListener("change", bump);
 
-    const pointsPerLane = meta.buffers.lanes.shape[1] ?? meta.counts.num_points_per_lane;
-    const numLanes = Math.min(
-      meta.counts.num_lanes,
-      Math.floor(scene.lanes.length / Math.max(pointsPerLane * 2, 1)),
-    );
-
-    const routePointCount = Math.min(meta.counts.route_points, Math.floor(scene.route.length / 2));
-    const tileCount = Math.min(meta.counts.tiles, Math.floor(scene.tileCorners.length / 8));
-
-    const stateStride = lastShapeDim(
-      meta.buffers.agent_states.shape,
-      Math.max(1, Math.floor(scene.agentStates.length / Math.max(meta.counts.num_agents, 1))),
-    );
-
-    const motionStride =
-      scene.agentMotion && meta.buffers.agent_motion
-        ? lastShapeDim(
-            meta.buffers.agent_motion.shape,
-            Math.max(0, Math.floor(scene.agentMotion.length / Math.max(meta.counts.num_agents, 1))),
-          )
-        : 0;
-
-    const numAgents = Math.min(
-      meta.counts.num_agents,
-      scene.agentTypes.length,
-      Math.floor(scene.agentStates.length / Math.max(stateStride, 1)),
-    );
-
-    const typeLabels = meta.buffers.agent_types.labels ?? ["vehicle", "pedestrian", "cyclist"];
-
-    const lanes: Point[][] = Array.from({ length: numLanes }, () => []);
-
-    for (let laneIndex = 0; laneIndex < numLanes; laneIndex += 1) {
-      const points: Point[] = [];
-
-      for (let pointIndex = 0; pointIndex < pointsPerLane; pointIndex += 1) {
-        const base = (laneIndex * pointsPerLane + pointIndex) * 2;
-        const x = scene.lanes[base];
-        const y = scene.lanes[base + 1];
-
-        if (isFiniteNumber(x) && isFiniteNumber(y)) {
-          points.push({ x, y });
-        }
-      }
-
-      lanes[laneIndex] = points;
-    }
-
-    const route: Point[] = [];
-    for (let i = 0; i < routePointCount; i += 1) {
-      const base = i * 2;
-      const x = scene.route[base];
-      const y = scene.route[base + 1];
-      if (isFiniteNumber(x) && isFiniteNumber(y)) {
-        route.push({ x, y });
-      }
-    }
-
-    const tiles: Point[][] = [];
-    for (let tile = 0; tile < tileCount; tile += 1) {
-      const corners: Point[] = [];
-      for (let corner = 0; corner < 4; corner += 1) {
-        const base = tile * 8 + corner * 2;
-        const x = scene.tileCorners[base];
-        const y = scene.tileCorners[base + 1];
-        if (isFiniteNumber(x) && isFiniteNumber(y)) {
-          corners.push({ x, y });
-        }
-      }
-      tiles.push(corners);
-    }
-
-    const agents: ParsedAgent[] = [];
-    for (let agentIndex = 0; agentIndex < numAgents; agentIndex += 1) {
-      const stateBase = agentIndex * stateStride;
-      const x = scene.agentStates[stateBase + STATE_LAYOUT.x];
-      const y = scene.agentStates[stateBase + STATE_LAYOUT.y];
-      const headingValue = scene.agentStates[stateBase + STATE_LAYOUT.heading];
-      const heading = isFiniteNumber(headingValue) ? headingValue : 0;
-
-      if (!isFiniteNumber(x) || !isFiniteNumber(y)) continue;
-
-      const typeIndex = scene.agentTypes[agentIndex] ?? 0;
-      const label = typeLabels[typeIndex] ?? "vehicle";
-
-      const rawLength =
-        STATE_LAYOUT.length < stateStride
-          ? scene.agentStates[stateBase + STATE_LAYOUT.length]
-          : undefined;
-
-      const rawWidth =
-        STATE_LAYOUT.width < stateStride
-          ? scene.agentStates[stateBase + STATE_LAYOUT.width]
-          : undefined;
-
-      const { length, width } = resolveAgentSize(label, rawLength, rawWidth);
-
-      const motion =
-        scene.agentMotion && motionStride >= 2
-          ? buildHistoryMotionPolyline(
-              x,
-              y,
-              heading,
-              scene.agentMotion,
-              agentIndex * motionStride,
-              motionStride,
-            )
-          : [{ x, y }];
-
-      agents.push({
-        id: agentIndex,
-        x,
-        y,
-        heading,
-        length,
-        width,
-        label,
-        isEgo: agentIndex === meta.ego_index,
-        motion,
-      });
-    }
-
-    const enumMap = meta.buffers.lane_connections.enum;
-    const connectionCount = Math.min(
-      scene.laneConnSrc.length,
-      scene.laneConnDst.length,
-      scene.laneConnType.length,
-    );
-
-    const connections: ParsedConnection[] = [];
-    for (let index = 0; index < connectionCount; index += 1) {
-      const srcLane = scene.laneConnSrc[index];
-      const dstLane = scene.laneConnDst[index];
-      const typeValue = scene.laneConnType[index];
-
-      if (srcLane >= lanes.length || dstLane >= lanes.length) continue;
-      const srcPoints = lanes[srcLane];
-      const dstPoints = lanes[dstLane];
-      if (srcPoints.length === 0 || dstPoints.length === 0) continue;
-
-      const kind: ParsedConnectionKind =
-        typeValue === enumMap.succ
-          ? "succ"
-          : typeValue === enumMap.left
-            ? "left"
-            : typeValue === enumMap.right
-              ? "right"
-              : "other";
-
-      connections.push({
-        srcTail: srcPoints[srcPoints.length - 1],
-        dstHead: dstPoints[0],
-        kind,
-      });
-    }
-
-    return {
-      meta,
-      agents,
-      lanes,
-      route,
-      tiles,
-      connections,
+    return () => {
+      mo.disconnect();
+      mq.removeEventListener("change", bump);
     };
-  }, [scene]);
+  }, []);
 
   useEffect(() => {
-    if (!scene || viewportSize.width === 0 || viewportSize.height === 0) return;
-    setCamera(createFitCamera(scene.meta.bbox_xyxy, viewportSize.width, viewportSize.height, 56));
-    setHoverState(null);
-    setMotionProgress(0.35);
-  }, [scene?.meta.scene_id, viewportSize.width, viewportSize.height]);
+    const mount = mountRef.current;
+    if (!mount) return;
+
+    const renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      alpha: false,
+    });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(mount.clientWidth, mount.clientHeight);
+    renderer.shadowMap.enabled = false;
+    mount.appendChild(renderer.domElement);
+
+    const scene = new THREE.Scene();
+    const cam = new THREE.PerspectiveCamera(
+      50,
+      mount.clientWidth / Math.max(mount.clientHeight, 1),
+      0.1,
+      5000,
+    );
+    cam.position.set(0, 200, 100);
+
+    const ctrl = new OrbitControls(cam, renderer.domElement);
+    ctrl.enableDamping = true;
+    ctrl.dampingFactor = 0.08;
+    ctrl.screenSpacePanning = true;
+    ctrl.minDistance = 3;
+    ctrl.maxDistance = 3000;
+    ctrl.maxPolarAngle = Math.PI / 2 - 0.01;
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.75));
+    const dLight = new THREE.DirectionalLight(0xffffff, 0.7);
+    dLight.position.set(60, 180, 40);
+    scene.add(dLight);
+
+    const st: ThreeState = {
+      renderer,
+      scene,
+      camera: cam,
+      controls: ctrl,
+      rafId: 0,
+      root: null,
+      routeGroup: null,
+      tilesGroup: null,
+      connsGroup: null,
+      trailLinesGroup: null,
+      ghostGroup: null,
+      agentMeshes: [],
+      ghostEntries: [],
+      highlight: null,
+      isDragging: false,
+    };
+    threeRef.current = st;
+
+    ctrl.addEventListener("start", () => {
+      st.isDragging = true;
+    });
+    ctrl.addEventListener("end", () => {
+      st.isDragging = false;
+    });
+
+    function animate() {
+      st.rafId = requestAnimationFrame(animate);
+      ctrl.update();
+      renderer.render(scene, cam);
+    }
+    animate();
+
+    const ro = new ResizeObserver(() => {
+      const w = mount.clientWidth;
+      const h = mount.clientHeight;
+      if (!w || !h) return;
+      cam.aspect = w / h;
+      cam.updateProjectionMatrix();
+      renderer.setSize(w, h);
+    });
+    ro.observe(mount);
+
+    return () => {
+      cancelAnimationFrame(st.rafId);
+      ro.disconnect();
+
+      if (st.root) {
+        st.scene.remove(st.root);
+        disposeGroup(st.root);
+        st.root = null;
+      }
+
+      ctrl.dispose();
+      renderer.dispose();
+
+      if (mount.contains(renderer.domElement)) {
+        mount.removeChild(renderer.domElement);
+      }
+
+      threeRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    const st = threeRef.current;
+    if (!st || !parsedScene) return;
+
+    if (st.root) {
+      st.scene.remove(st.root);
+      disposeGroup(st.root);
+      st.root = null;
+    }
+
+    const dark = isDarkTheme();
+    const p = getPalette(dark);
+    st.scene.background = new THREE.Color(p.background);
+
+    const root = new THREE.Group();
+    const lw = isFiniteNumber(parsedScene.meta.lane_width_m)
+      ? parsedScene.meta.lane_width_m
+      : 4.2;
+
+    const ground = buildGround(parsedScene.meta.bbox_xyxy, p);
+    const lanes = buildLanes(parsedScene.lanes, lw, p);
+    const routeG = buildRoute(parsedScene.route, p);
+    const tilesG = buildTiles(parsedScene.tiles, p);
+    const connsG = buildConnections(parsedScene.connections, p);
+    const { group: agGroup, meshes: agMeshes } = buildAgents(
+      parsedScene.agents,
+      p,
+    );
+    const { linesGroup, ghostGroup, ghostEntries } = buildTrails(
+      parsedScene.agents,
+      p,
+    );
+    const hl = buildHighlight(p);
+
+    root.add(
+      ground,
+      lanes,
+      routeG,
+      tilesG,
+      connsG,
+      agGroup,
+      linesGroup,
+      ghostGroup,
+      hl,
+    );
+    st.scene.add(root);
+
+    st.root = root;
+    st.routeGroup = routeG;
+    st.tilesGroup = tilesG;
+    st.connsGroup = connsG;
+    st.trailLinesGroup = linesGroup;
+    st.ghostGroup = ghostGroup;
+    st.agentMeshes = agMeshes;
+    st.ghostEntries = ghostEntries;
+    st.highlight = hl;
+
+    fitCamera(
+      st.camera,
+      st.controls,
+      parsedScene.meta.bbox_xyxy,
+      "perspective",
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parsedScene, themeVer]);
+
+  useEffect(() => {
+    const st = threeRef.current;
+    if (!st) return;
+    if (st.routeGroup) st.routeGroup.visible = showRoute;
+    if (st.tilesGroup) st.tilesGroup.visible = showTiles;
+    if (st.connsGroup) st.connsGroup.visible = showConnections;
+    if (st.trailLinesGroup) st.trailLinesGroup.visible = showMotion;
+    if (st.ghostGroup) st.ghostGroup.visible = showMotion;
+  }, [showRoute, showTiles, showConnections, showMotion]);
+
+  useEffect(() => {
+    const st = threeRef.current;
+    if (!st) return;
+
+    for (const { mesh, agent } of st.ghostEntries) {
+      if (agent.motion.length < 2) {
+        mesh.visible = false;
+        continue;
+      }
+
+      const pos = samplePolyline(agent.motion, motionProgress);
+      const hd = sampleHeading(agent.motion, motionProgress) ?? agent.heading;
+
+      if (pos) {
+        const h = AGENT_H[agent.label] ?? 1.5;
+        mesh.position.set(pos.x, h / 2, -pos.y);
+        mesh.rotation.y = hd + AGENT_YAW_OFFSET;
+        mesh.visible = true;
+      } else {
+        mesh.visible = false;
+      }
+    }
+  }, [motionProgress]);
+
+  useEffect(() => {
+    const mount = mountRef.current;
+    const st = threeRef.current;
+    if (!mount || !st) return;
+
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+
+    const onMove = (e: PointerEvent) => {
+      if (st.isDragging) {
+        setHoverState(null);
+        if (st.highlight) st.highlight.visible = false;
+        return;
+      }
+
+      const rect = mount.getBoundingClientRect();
+      const sx = e.clientX - rect.left;
+      const sy = e.clientY - rect.top;
+
+      mouse.x = (sx / rect.width) * 2 - 1;
+      mouse.y = -(sy / rect.height) * 2 + 1;
+
+      raycaster.setFromCamera(mouse, st.camera);
+      const hits = raycaster.intersectObjects(st.agentMeshes);
+
+      if (hits.length > 0) {
+        const ag = hits[0].object.userData.agentData as ParsedAgent;
+
+        if (st.highlight) {
+          const h = AGENT_H[ag.label] ?? 1.5;
+          st.highlight.scale.set(
+            ag.length * 1.15,
+            h * 1.15,
+            ag.width * 1.15,
+          );
+          st.highlight.position.set(ag.x, h / 2, -ag.y);
+          st.highlight.rotation.y = ag.heading + AGENT_YAW_OFFSET;
+          st.highlight.visible = true;
+        }
+
+        setHoverState({ agent: ag, screenX: sx, screenY: sy });
+      } else {
+        if (st.highlight) st.highlight.visible = false;
+        setHoverState(null);
+      }
+    };
+
+    const onLeave = () => {
+      setHoverState(null);
+      if (st.highlight) st.highlight.visible = false;
+    };
+
+    mount.addEventListener("pointermove", onMove);
+    mount.addEventListener("pointerleave", onLeave);
+
+    return () => {
+      mount.removeEventListener("pointermove", onMove);
+      mount.removeEventListener("pointerleave", onLeave);
+    };
+  }, [parsedScene]);
 
   useEffect(() => {
     if (!animateMotion) return;
 
     let raf = 0;
-    let lastTimestamp: number | null = null;
+    let last: number | null = null;
 
-    const tick = (timestamp: number) => {
-      if (lastTimestamp === null) {
-        lastTimestamp = timestamp;
-      }
-
-      const delta = (timestamp - lastTimestamp) / 1000;
-      lastTimestamp = timestamp;
-
-      setMotionProgress((current) => {
-        const next = current + delta / MOTION_LOOP_SECONDS;
-        return next >= 1 ? next - Math.floor(next) : next;
+    const tick = (ts: number) => {
+      if (last === null) last = ts;
+      const dt = (ts - last) / 1000;
+      last = ts;
+      setMotionProgress((c) => {
+        const n = c + dt / MOTION_LOOP_SECONDS;
+        return n >= 1 ? n - Math.floor(n) : n;
       });
-
       raf = requestAnimationFrame(tick);
     };
 
     raf = requestAnimationFrame(tick);
-
     return () => cancelAnimationFrame(raf);
   }, [animateMotion]);
 
-  const fitToScene = () => {
-    if (!scene || viewportSize.width === 0 || viewportSize.height === 0) return;
-    setCamera(createFitCamera(scene.meta.bbox_xyxy, viewportSize.width, viewportSize.height, 56));
-    setHoverState(null);
-  };
+  const doFit = useCallback(
+    (mode: "perspective" | "top" = "perspective") => {
+      const st = threeRef.current;
+      if (!st || !parsedScene) return;
+      fitCamera(st.camera, st.controls, parsedScene.meta.bbox_xyxy, mode);
+      setHoverState(null);
+    },
+    [parsedScene],
+  );
 
-  const centerOnEgo = () => {
-    if (!parsedScene || viewportSize.width === 0 || viewportSize.height === 0) return;
+  const centerEgo = useCallback(() => {
+    const st = threeRef.current;
+    if (!st || !parsedScene) return;
 
-    const ego = parsedScene.agents.find((agent) => agent.isEgo) ?? parsedScene.agents[0];
+    const ego =
+      parsedScene.agents.find((a) => a.isEgo) ?? parsedScene.agents[0];
     if (!ego) return;
 
-    setCamera((current) => {
-      if (!current) return current;
-      return {
-        ...current,
-        tx: viewportSize.width / 2 - ego.x * current.scale,
-        ty: viewportSize.height / 2 + ego.y * current.scale,
-      };
-    });
-  };
-
-  const zoomAroundPoint = (factor: number, anchorX: number, anchorY: number) => {
-    setCamera((current) => {
-      if (!current) return current;
-
-      const worldPoint = screenToWorld(anchorX, anchorY, current);
-      const nextScale = clamp(
-        current.scale * factor,
-        current.fitScale * 0.6,
-        current.fitScale * 18,
-      );
-
-      return {
-        ...current,
-        scale: nextScale,
-        tx: anchorX - worldPoint.x * nextScale,
-        ty: anchorY + worldPoint.y * nextScale,
-      };
-    });
-  };
-
-  const updateHoverFromScreen = (screenX: number, screenY: number) => {
-    if (!parsedScene || !cameraRef.current) {
-      setHoverState(null);
-      return;
-    }
-
-    const cameraValue = cameraRef.current;
-    const worldPoint = screenToWorld(screenX, screenY, cameraValue);
-
-    let found: ParsedAgent | null = null;
-
-    for (let index = parsedScene.agents.length - 1; index >= 0; index -= 1) {
-      const agent = parsedScene.agents[index];
-      if (pointInsideAgent(worldPoint, agent)) {
-        found = agent;
-        break;
-      }
-    }
-
-    if (!found) {
-      let bestDistance = 16;
-
-      parsedScene.agents.forEach((agent) => {
-        const screen = worldToScreen(agent.x, agent.y, cameraValue);
-        const distance = Math.hypot(screen.x - screenX, screen.y - screenY);
-        if (distance < bestDistance) {
-          bestDistance = distance;
-          found = agent;
-        }
-      });
-    }
-
-    setHoverState(
-      found
-        ? {
-            agent: found,
-            screenX,
-            screenY,
-          }
-        : null,
-    );
-  };
-
-  const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0) return;
-
-    event.currentTarget.setPointerCapture(event.pointerId);
-    dragRef.current = {
-      active: true,
-      pointerId: event.pointerId,
-      lastClientX: event.clientX,
-      lastClientY: event.clientY,
-    };
-    setIsDragging(true);
-    setHoverState(null);
-  };
-
-  const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const rect = stageRef.current?.getBoundingClientRect();
-    if (!rect) return;
-
-    const localX = event.clientX - rect.left;
-    const localY = event.clientY - rect.top;
-
-    if (dragRef.current.active) {
-      const dx = event.clientX - dragRef.current.lastClientX;
-      const dy = event.clientY - dragRef.current.lastClientY;
-
-      dragRef.current.lastClientX = event.clientX;
-      dragRef.current.lastClientY = event.clientY;
-
-      setCamera((current) =>
-        current
-          ? {
-              ...current,
-              tx: current.tx + dx,
-              ty: current.ty + dy,
-            }
-          : current,
-      );
-      return;
-    }
-
-    updateHoverFromScreen(localX, localY);
-  };
-
-  const handlePointerUpOrCancel = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (dragRef.current.active && dragRef.current.pointerId === event.pointerId) {
-      try {
-        event.currentTarget.releasePointerCapture(event.pointerId);
-      } catch {
-        // ignore
-      }
-    }
-
-    dragRef.current.active = false;
-    dragRef.current.pointerId = -1;
-    setIsDragging(false);
-
-    const rect = stageRef.current?.getBoundingClientRect();
-    if (!rect) return;
-
-    updateHoverFromScreen(event.clientX - rect.left, event.clientY - rect.top);
-  };
-
-  const handleWheel = (event: ReactWheelEvent<HTMLDivElement>) => {
-    event.preventDefault();
-
-    const rect = stageRef.current?.getBoundingClientRect();
-    if (!rect) return;
-
-    const localX = event.clientX - rect.left;
-    const localY = event.clientY - rect.top;
-    const factor = event.deltaY < 0 ? 1.12 : 0.89;
-
-    zoomAroundPoint(factor, localX, localY);
-  };
-
-  useEffect(() => {
-    if (!parsedScene || !camera || !canvasRef.current) return;
-    if (viewportSize.width === 0 || viewportSize.height === 0) return;
-
-    const canvas = canvasRef.current;
-    const context = canvas.getContext("2d");
-    if (!context) return;
-
-    const devicePixelRatio = window.devicePixelRatio || 1;
-    canvas.width = Math.floor(viewportSize.width * devicePixelRatio);
-    canvas.height = Math.floor(viewportSize.height * devicePixelRatio);
-    canvas.style.width = `${viewportSize.width}px`;
-    canvas.style.height = `${viewportSize.height}px`;
-
-    context.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
-    context.clearRect(0, 0, viewportSize.width, viewportSize.height);
-    context.imageSmoothingEnabled = true;
-
-    const dark = isDarkTheme();
-
-    const palette: Palette = dark
-      ? {
-          background: "#09090b",
-          roadFill: "rgba(148,163,184,0.18)",
-          laneCenter: "rgba(228,228,231,0.52)",
-          routeGlow: "rgba(56,189,248,0.20)",
-          route: "#38bdf8",
-          tileFill: "rgba(59,130,246,0.08)",
-          tileStroke: "rgba(96,165,250,0.28)",
-          successor: "rgba(34,197,94,0.72)",
-          lateral: "rgba(168,85,247,0.72)",
-          vehicle: "#e4e4e7",
-          pedestrian: "#4ade80",
-          cyclist: "#facc15",
-          ego: "#fb923c",
-          roofLight: "rgba(9,9,11,0.24)",
-          outline: "rgba(9,9,11,0.96)",
-          heading: "rgba(9,9,11,0.92)",
-          hover: "#60a5fa",
-          motionVehicle: "rgba(56,189,248,0.46)",
-          motionPedestrian: "rgba(74,222,128,0.40)",
-          motionCyclist: "rgba(250,204,21,0.40)",
-          agentShadow: "rgba(0,0,0,0.28)",
-        }
-      : {
-          background: "#ffffff",
-          roadFill: "rgba(148,163,184,0.28)",
-          laneCenter: "rgba(51,65,85,0.62)",
-          routeGlow: "rgba(14,165,233,0.18)",
-          route: "#0284c7",
-          tileFill: "rgba(37,99,235,0.05)",
-          tileStroke: "rgba(37,99,235,0.18)",
-          successor: "rgba(34,197,94,0.72)",
-          lateral: "rgba(168,85,247,0.68)",
-          vehicle: "#334155",
-          pedestrian: "#16a34a",
-          cyclist: "#ca8a04",
-          ego: "#ea580c",
-          roofLight: "rgba(255,255,255,0.28)",
-          outline: "rgba(255,255,255,0.96)",
-          heading: "rgba(255,255,255,0.92)",
-          hover: "#2563eb",
-          motionVehicle: "rgba(2,132,199,0.42)",
-          motionPedestrian: "rgba(22,163,74,0.38)",
-          motionCyclist: "rgba(202,138,4,0.38)",
-          agentShadow: "rgba(15,23,42,0.16)",
-        };
-
-    const laneWidth = isFiniteNumber(parsedScene.meta.lane_width_m)
-      ? parsedScene.meta.lane_width_m
-      : 4.2;
-
-    const roadBandWidth = clamp(laneWidth * camera.scale * 0.6, 1.8, 24);
-    const laneCenterWidth = clamp(roadBandWidth * 0.14, 1.1, 2.8);
-
-    context.fillStyle = palette.background;
-    context.fillRect(0, 0, viewportSize.width, viewportSize.height);
-
-    if (showTiles) {
-      context.save();
-      context.fillStyle = palette.tileFill;
-      context.strokeStyle = palette.tileStroke;
-      context.lineWidth = 1;
-
-      parsedScene.tiles.forEach((tile) => {
-        if (tile.length < 4) return;
-
-        context.beginPath();
-        tile.forEach((corner, index) => {
-          const screen = worldToScreen(corner.x, corner.y, camera);
-          if (index === 0) {
-            context.moveTo(screen.x, screen.y);
-          } else {
-            context.lineTo(screen.x, screen.y);
-          }
-        });
-        context.closePath();
-        context.fill();
-        context.stroke();
-      });
-
-      context.restore();
-    }
-
-    context.save();
-    context.strokeStyle = palette.roadFill;
-    context.lineWidth = roadBandWidth;
-    context.lineJoin = "round";
-    context.lineCap = "round";
-
-    parsedScene.lanes.forEach((lanePoints) => {
-      if (lanePoints.length < 2) return;
-      drawPolyline(context, lanePoints, camera);
-    });
-
-    context.restore();
-
-    context.save();
-    context.strokeStyle = palette.laneCenter;
-    context.lineWidth = laneCenterWidth;
-    context.lineJoin = "round";
-    context.lineCap = "round";
-
-    parsedScene.lanes.forEach((lanePoints) => {
-      if (lanePoints.length < 2) return;
-      drawPolyline(context, lanePoints, camera);
-    });
-
-    context.restore();
-
-    if (showConnections) {
-      context.save();
-      context.lineWidth = 1.2;
-      context.setLineDash([6, 4]);
-      context.lineCap = "round";
-
-      parsedScene.connections.forEach((connection) => {
-        if (connection.kind === "other") return;
-
-        context.strokeStyle =
-          connection.kind === "succ" ? palette.successor : palette.lateral;
-
-        context.beginPath();
-        const p0 = worldToScreen(connection.srcTail.x, connection.srcTail.y, camera);
-        const p1 = worldToScreen(connection.dstHead.x, connection.dstHead.y, camera);
-        context.moveTo(p0.x, p0.y);
-        context.lineTo(p1.x, p1.y);
-        context.stroke();
-      });
-
-      context.restore();
-    }
-
-    if (showRoute && parsedScene.route.length > 1) {
-      context.save();
-      context.strokeStyle = palette.routeGlow;
-      context.lineWidth = clamp(roadBandWidth * 0.9, 4, 18);
-      context.lineJoin = "round";
-      context.lineCap = "round";
-      drawPolyline(context, parsedScene.route, camera);
-      context.restore();
-
-      context.save();
-      context.strokeStyle = palette.route;
-      context.lineWidth = clamp(roadBandWidth * 0.3, 2.2, 6.2);
-      context.lineJoin = "round";
-      context.lineCap = "round";
-      drawPolyline(context, parsedScene.route, camera);
-      context.restore();
-    }
-
-    const hoveredAgentId = hoverState?.agent.id ?? -1;
-
-    if (showMotion) {
-      parsedScene.agents.forEach((agent) => {
-        if (agent.motion.length < 2) return;
-
-        const motionColor =
-          agent.label === "pedestrian"
-            ? palette.motionPedestrian
-            : agent.label === "cyclist"
-              ? palette.motionCyclist
-              : palette.motionVehicle;
-
-        context.save();
-        context.strokeStyle = motionColor;
-        context.lineWidth = agent.isEgo ? 2.4 : 1.5;
-        context.lineCap = "round";
-        context.lineJoin = "round";
-        drawPolyline(context, agent.motion, camera);
-        context.restore();
-
-        const ghostPoint = samplePolyline(agent.motion, motionProgress);
-        const ghostHeading = sampleHeadingFromPolyline(agent.motion, motionProgress) ?? agent.heading;
-
-        if (ghostPoint) {
-          const bodyColor =
-            agent.isEgo
-              ? palette.ego
-              : agent.label === "pedestrian"
-                ? palette.pedestrian
-                : agent.label === "cyclist"
-                  ? palette.cyclist
-                  : palette.vehicle;
-
-          drawAgentShape(context, camera, palette, {
-            x: ghostPoint.x,
-            y: ghostPoint.y,
-            heading: ghostHeading,
-            length: agent.length,
-            width: agent.width,
-            bodyColor,
-            isEgo: agent.isEgo,
-            ghost: true,
-            highlight: false,
-          });
-        }
-      });
-
-      if (hoverState?.agent.motion && hoverState.agent.motion.length > 1) {
-        context.save();
-        context.strokeStyle = palette.hover;
-        context.lineWidth = 2.4;
-        context.lineJoin = "round";
-        context.lineCap = "round";
-        drawPolyline(context, hoverState.agent.motion, camera);
-        context.restore();
-      }
-    }
-
-    const agentsForDraw = [...parsedScene.agents].sort((a, b) => {
-      if (a.id === hoveredAgentId) return 1;
-      if (b.id === hoveredAgentId) return -1;
-      if (a.isEgo === b.isEgo) return 0;
-      return a.isEgo ? 1 : -1;
-    });
-
-    agentsForDraw.forEach((agent) => {
-      const bodyColor =
-        agent.isEgo
-          ? palette.ego
-          : agent.label === "pedestrian"
-            ? palette.pedestrian
-            : agent.label === "cyclist"
-              ? palette.cyclist
-              : palette.vehicle;
-
-      drawAgentShape(context, camera, palette, {
-        x: agent.x,
-        y: agent.y,
-        heading: agent.heading,
-        length: agent.length,
-        width: agent.width,
-        bodyColor,
-        isEgo: agent.isEgo,
-        ghost: false,
-        highlight: agent.id === hoveredAgentId,
-      });
-    });
-  }, [
-    parsedScene,
-    camera,
-    viewportSize,
-    showRoute,
-    showTiles,
-    showConnections,
-    showMotion,
-    hoverState,
-    motionProgress,
-    themeVersion,
-  ]);
-
-  const chipClass =
+    const target = new THREE.Vector3(ego.x, 0, -ego.y);
+    st.controls.target.copy(target);
+    st.controls.update();
+  }, [parsedScene]);
+
+  const chip =
     "rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300";
-
-  const secondaryButtonClass =
+  const btnSec =
     "rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800";
+  const btnPri =
+    "rounded-full bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white";
+  const btnBlue =
+    "rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-500 dark:hover:bg-blue-400";
 
-  const relativeZoom = camera ? camera.scale / camera.fitScale : 1;
+  const containerH = "clamp(30rem, 74vh, 46rem)";
 
-  const tooltipLeft =
-    hoverState && viewportSize.width > 0
-      ? Math.max(12, Math.min(hoverState.screenX + 16, viewportSize.width - 236))
-      : 0;
-
-  const tooltipTop =
-    hoverState && viewportSize.height > 0
-      ? Math.max(12, Math.min(hoverState.screenY - 12, viewportSize.height - 148))
-      : 0;
+  const mountW = mountRef.current?.clientWidth ?? 600;
+  const mountH = mountRef.current?.clientHeight ?? 400;
+  const ttLeft = hoverState
+    ? Math.max(12, Math.min(hoverState.screenX + 16, mountW - 240))
+    : 0;
+  const ttTop = hoverState
+    ? Math.max(12, Math.min(hoverState.screenY - 12, mountH - 160))
+    : 0;
 
   return (
     <div className="space-y-5">
@@ -1477,57 +1664,62 @@ export default function VectorSceneViewerClient({ indexUrl }: Props) {
               </span>
               <select
                 value={selectedId}
-                onChange={(event) => setSelectedId(event.target.value)}
+                onChange={(e) => setSelectedId(e.target.value)}
                 className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
               >
-                {indexData?.scenes.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.id}
+                {indexData?.scenes.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.id}
                   </option>
                 ))}
               </select>
             </label>
 
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={fitToScene} className="rounded-full bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white">
+              <button type="button" onClick={goPrevScene} className={btnSec}>
+                ← Previous
+              </button>
+              <button type="button" onClick={goNextScene} className={btnPri}>
+                Next →
+              </button>
+              <span className={chip}>
+                {sceneIdx + 1} / {totalScenes}
+              </span>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => doFit("perspective")}
+                className={btnPri}
+              >
                 Fit view
               </button>
-              <button type="button" onClick={centerOnEgo} className={secondaryButtonClass}>
+              <button
+                type="button"
+                onClick={() => doFit("top")}
+                className={btnSec}
+              >
+                Top view
+              </button>
+              <button type="button" onClick={centerEgo} className={btnSec}>
                 Center ego
-              </button>
-              <button
-                type="button"
-                onClick={() => zoomAroundPoint(1.2, viewportSize.width / 2, viewportSize.height / 2)}
-                className={secondaryButtonClass}
-              >
-                Zoom in
-              </button>
-              <button
-                type="button"
-                onClick={() => zoomAroundPoint(1 / 1.2, viewportSize.width / 2, viewportSize.height / 2)}
-                className={secondaryButtonClass}
-              >
-                Zoom out
               </button>
             </div>
 
             <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950">
-              <div>
-                <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-                  Inspection controls
-                </h3>
-                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                  Interactive view of the exported vector graph
-                </p>
-              </div>
-
-              <p className="mt-3 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
-                Pan, zoom, and inspect individual agents directly in the exported scene.
+              <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                3D Inspection
+              </h3>
+              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                Orbit, pan, and zoom the exported vector scene in 3D
               </p>
-
-              <p className="mt-3 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
-                Agents are rendered as oriented boxes to preserve geometry, heading, and local interaction cues.
-              </p>
+              <ul className="mt-3 space-y-1.5 text-sm text-zinc-600 dark:text-zinc-400">
+                <li>🖱️ Left drag → orbit</li>
+                <li>🖱️ Right drag → pan</li>
+                <li>🖱️ Scroll → zoom (no page scroll)</li>
+                <li>🖱️ Double-click → fit view</li>
+              </ul>
             </div>
           </div>
 
@@ -1536,53 +1728,37 @@ export default function VectorSceneViewerClient({ indexUrl }: Props) {
               <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
                 Layers
               </h3>
-
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <label className="inline-flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
-                  <input
-                    type="checkbox"
-                    checked={showRoute}
-                    onChange={(event) => setShowRoute(event.target.checked)}
-                    className="rounded border-zinc-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  Route
-                </label>
-
-                <label className="inline-flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
-                  <input
-                    type="checkbox"
-                    checked={showTiles}
-                    onChange={(event) => setShowTiles(event.target.checked)}
-                    className="rounded border-zinc-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  Tile bounds
-                </label>
-
-                <label className="inline-flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
-                  <input
-                    type="checkbox"
-                    checked={showConnections}
-                    onChange={(event) => setShowConnections(event.target.checked)}
-                    className="rounded border-zinc-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  Lane links
-                </label>
-
-                <label className="inline-flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
-                  <input
-                    type="checkbox"
-                    checked={showMotion}
-                    onChange={(event) => {
-                      const checked = event.target.checked;
-                      setShowMotion(checked);
-                      if (!checked) {
-                        setAnimateMotion(false);
+                {(
+                  [
+                    ["Route", showRoute, setShowRoute],
+                    ["Tile bounds", showTiles, setShowTiles],
+                    ["Lane links", showConnections, setShowConnections],
+                    [
+                      "Motion trail",
+                      showMotion,
+                      (v: boolean) => {
+                        setShowMotion(v);
+                        if (!v) setAnimateMotion(false);
+                      },
+                    ],
+                  ] as const
+                ).map(([label, val, setter]) => (
+                  <label
+                    key={label}
+                    className="inline-flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={val as boolean}
+                      onChange={(e) =>
+                        (setter as (v: boolean) => void)(e.target.checked)
                       }
-                    }}
-                    className="rounded border-zinc-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  Motion trail
-                </label>
+                      className="rounded border-zinc-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    {label}
+                  </label>
+                ))}
               </div>
             </div>
 
@@ -1591,7 +1767,6 @@ export default function VectorSceneViewerClient({ indexUrl }: Props) {
                 <span>Motion trail progress</span>
                 <span>{Math.round(motionProgress * 100)}%</span>
               </div>
-
               <input
                 type="range"
                 min={0}
@@ -1599,23 +1774,21 @@ export default function VectorSceneViewerClient({ indexUrl }: Props) {
                 step={1}
                 value={Math.round(motionProgress * 1000)}
                 disabled={!showMotion}
-                onChange={(event) => {
+                onChange={(e) => {
                   setAnimateMotion(false);
-                  setMotionProgress(Number(event.target.value) / 1000);
+                  setMotionProgress(Number(e.target.value) / 1000);
                 }}
                 className="w-full accent-blue-600"
               />
-
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
                   type="button"
                   disabled={!showMotion}
-                  onClick={() => setAnimateMotion((current) => !current)}
-                  className="rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-500 dark:hover:bg-blue-400"
+                  onClick={() => setAnimateMotion((c) => !c)}
+                  className={btnBlue}
                 >
                   {animateMotion ? "Pause trail" : "Play trail"}
                 </button>
-
                 <button
                   type="button"
                   disabled={!showMotion}
@@ -1623,153 +1796,123 @@ export default function VectorSceneViewerClient({ indexUrl }: Props) {
                     setAnimateMotion(false);
                     setMotionProgress(0);
                   }}
-                  className="rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                  className={btnSec}
                 >
                   Reset trail
                 </button>
               </div>
-
-              <p className="mt-3 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
-                Qualitative trail preview reconstructed from <code>agent_motion</code>.
-              </p>
             </div>
           </div>
         </div>
 
-        {selectedIndexEntry && (
+        {selectedEntry && (
           <div className="mt-5 flex flex-wrap gap-2">
-            <span className={chipClass}>scene {selectedIndexEntry.id}</span>
-            <span className={chipClass}>{scene?.meta.dataset ?? "dataset"}</span>
-            <span className={chipClass}>{selectedIndexEntry.num_lanes} lanes</span>
-            <span className={chipClass}>{selectedIndexEntry.num_agents} agents</span>
-            <span className={chipClass}>{selectedIndexEntry.route_points} route points</span>
-            <span className={chipClass}>{relativeZoom.toFixed(2)}× zoom</span>
+            <span className={chip}>scene {selectedEntry.id}</span>
+            <span className={chip}>{sceneData?.meta.dataset ?? "dataset"}</span>
+            <span className={chip}>{selectedEntry.num_lanes} lanes</span>
+            <span className={chip}>{selectedEntry.num_agents} agents</span>
+            <span className={chip}>{selectedEntry.route_points} route pts</span>
             <span
               className={
-                selectedIndexEntry.route_completed
+                selectedEntry.route_completed
                   ? "rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700 dark:bg-green-500/10 dark:text-green-300"
-                  : chipClass
+                  : chip
               }
             >
-              {selectedIndexEntry.route_completed ? "route completed" : "route not completed"}
+              {selectedEntry.route_completed
+                ? "route completed"
+                : "route not completed"}
             </span>
           </div>
         )}
       </section>
 
       <div
-        ref={stageRef}
-        aria-label="Interactive vector scene viewer"
-        className={`relative w-full overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950 ${
-          isDragging ? "cursor-grabbing" : "cursor-grab"
-        } select-none touch-none`}
-        style={{ height: "clamp(30rem, 74vh, 46rem)" }}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUpOrCancel}
-        onPointerCancel={handlePointerUpOrCancel}
-        onPointerLeave={() => {
-          if (!dragRef.current.active) {
-            setHoverState(null);
-          }
-        }}
-        onWheel={handleWheel}
-        onDoubleClick={(event) => {
-          event.preventDefault();
-          fitToScene();
+        ref={mountRef}
+        className="relative w-full select-none overflow-hidden rounded-3xl border border-zinc-200 bg-zinc-950 shadow-sm dark:border-zinc-800"
+        style={{ height: containerH }}
+        onDoubleClick={(e) => {
+          e.preventDefault();
+          doFit("perspective");
         }}
       >
-        <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
-
-        <div className="pointer-events-none absolute left-4 top-4 z-10 flex flex-wrap gap-2 text-xs text-zinc-700 dark:text-zinc-300">
-          <span className="rounded-full border border-zinc-200 bg-white/90 px-3 py-1 backdrop-blur dark:border-zinc-700 dark:bg-zinc-900/90">
-            Interactive canvas
+        <div className="pointer-events-none absolute left-4 top-4 z-10 flex flex-wrap gap-2 text-xs text-zinc-300">
+          <span className="rounded-full border border-zinc-700 bg-zinc-900/90 px-3 py-1 backdrop-blur">
+            3D interactive canvas
           </span>
-          <span className="rounded-full border border-zinc-200 bg-white/90 px-3 py-1 backdrop-blur dark:border-zinc-700 dark:bg-zinc-900/90">
+          <span className="rounded-full border border-zinc-700 bg-zinc-900/90 px-3 py-1 backdrop-blur">
             Double-click to fit
           </span>
         </div>
 
-        {(loading || !scene || !camera) && !error && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white/80 text-sm font-medium text-zinc-700 backdrop-blur dark:bg-zinc-950/80 dark:text-zinc-300">
+        {(loading || !sceneData) && !error && (
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-zinc-950/80 text-sm font-medium text-zinc-300 backdrop-blur">
             Loading vector scene…
           </div>
         )}
-
         {error && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white/85 px-6 text-center text-sm font-medium text-red-700 backdrop-blur dark:bg-zinc-950/85 dark:text-red-300">
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-zinc-950/85 px-6 text-center text-sm font-medium text-red-400 backdrop-blur">
             {error}
           </div>
         )}
 
         {hoverState && (
           <div
-            className="pointer-events-none absolute z-10 w-56 rounded-2xl border border-zinc-200 bg-white/95 p-3 text-xs shadow-lg backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/95"
-            style={{
-              left: tooltipLeft,
-              top: tooltipTop,
-            }}
+            className="pointer-events-none absolute z-30 w-56 rounded-2xl border border-zinc-700 bg-zinc-900/95 p-3 text-xs shadow-lg backdrop-blur"
+            style={{ left: ttLeft, top: ttTop }}
           >
             <div className="flex items-center justify-between gap-2">
-              <div className="font-semibold text-zinc-900 dark:text-zinc-100">
+              <div className="font-semibold text-zinc-100">
                 agent {hoverState.agent.id}
               </div>
-              <div className="rounded-full bg-zinc-100 px-2 py-0.5 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+              <div className="rounded-full bg-zinc-800 px-2 py-0.5 text-zinc-300">
                 {hoverState.agent.isEgo
                   ? "Ego"
                   : formatAgentLabel(hoverState.agent.label)}
               </div>
             </div>
-
-            <div className="mt-3 space-y-1.5 text-zinc-600 dark:text-zinc-400">
+            <div className="mt-3 space-y-1.5 text-zinc-400">
               <div>
-                position ({hoverState.agent.x.toFixed(1)}, {hoverState.agent.y.toFixed(1)}) m
+                position ({hoverState.agent.x.toFixed(1)},{" "}
+                {hoverState.agent.y.toFixed(1)}) m
               </div>
-              <div>heading {toDegrees(hoverState.agent.heading).toFixed(1)}°</div>
+              <div>heading {toDeg(hoverState.agent.heading).toFixed(1)}°</div>
               <div>
-                bbox {hoverState.agent.length.toFixed(1)} × {hoverState.agent.width.toFixed(1)} m
+                bbox {hoverState.agent.length.toFixed(1)} ×{" "}
+                {hoverState.agent.width.toFixed(1)} m
               </div>
-              <div>{Math.max(0, hoverState.agent.motion.length - 1)} trail samples</div>
+              <div>
+                {Math.max(0, hoverState.agent.motion.length - 1)} trail samples
+              </div>
             </div>
           </div>
         )}
       </div>
 
       <div className="flex flex-wrap gap-4 text-xs text-zinc-600 dark:text-zinc-400">
-        <span className="inline-flex items-center gap-2">
-          <span className="h-3 w-3 rounded-full bg-zinc-400"></span>
-          Lane band
-        </span>
-        <span className="inline-flex items-center gap-2">
-          <span className="h-3 w-3 rounded-full bg-sky-500"></span>
-          Route
-        </span>
-        <span className="inline-flex items-center gap-2">
-          <span className="h-3 w-3 rounded-full bg-blue-400"></span>
-          Motion trail
-        </span>
-        <span className="inline-flex items-center gap-2">
-          <span className="h-3 w-3 rounded-full bg-orange-500"></span>
-          Ego
-        </span>
-        <span className="inline-flex items-center gap-2">
-          <span className="h-3 w-3 rounded-full bg-slate-500"></span>
-          Vehicle
-        </span>
-        <span className="inline-flex items-center gap-2">
-          <span className="h-3 w-3 rounded-full bg-green-500"></span>
-          Pedestrian
-        </span>
-        <span className="inline-flex items-center gap-2">
-          <span className="h-3 w-3 rounded-full bg-amber-500"></span>
-          Cyclist
-        </span>
+        {(
+          [
+            ["bg-zinc-400", "Lane band"],
+            ["bg-sky-500", "Route"],
+            ["bg-sky-400", "Motion trail"],
+            ["bg-orange-500", "Ego"],
+            ["bg-slate-500", "Vehicle"],
+            ["bg-green-500", "Pedestrian"],
+            ["bg-amber-500", "Cyclist"],
+          ] as const
+        ).map(([c, l]) => (
+          <span key={l} className="inline-flex items-center gap-2">
+            <span className={`h-3 w-3 rounded-full ${c}`} />
+            {l}
+          </span>
+        ))}
       </div>
 
       <div className="rounded-3xl border border-zinc-200 bg-zinc-50 p-4 text-sm leading-6 text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400">
         <strong className="text-zinc-900 dark:text-zinc-100">Note.</strong>{" "}
         Exported scene inspection only: one scene snapshot plus a qualitative{" "}
-        <code>agent_motion</code> trail, not a full per-step replay.
+        <code>agent_motion</code> trail, not a full per-step replay. Drag to
+        orbit, scroll to zoom, right-drag to pan.
       </div>
     </div>
   );

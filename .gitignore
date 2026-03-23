@@ -18,7 +18,7 @@ project-page/dist/
 .astro/
 
 # dependencies
-project-page/node_modules/
+*node_modules*
 
 # logs
 npm-debug.log*

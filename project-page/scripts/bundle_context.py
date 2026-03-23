@@ -19,6 +19,145 @@ python3 scripts/bundle_context.py \
   src/paper.mdx \
   .github/workflows/astro.yml package.json src/components/Picture.astro src/components/Video.astro src/components/Wide.astro src/components/starwind/tabs/Tabs.astro src/lib/render-pdf.ts src/pages/index.astro src/styles/global.css astro.config.ts src/components/Links.astro src/components/ThemeToggle.astro \
   -o scripts/project_context.txt
+
+
+
+我是用的GitHub论文主页模板: https://github.com/RomanHauksson/academic-project-astro-template  后续使用 .github.io 的方式展示我们的工作的主页网页。
+我目前已经完成了一版我的论文主页设计和代码修改。 
+但是目前的展示的网页仍然存在一些问题：
+1. 主要是 Long-horizon rollout evidence and exported scene inspection 中，可交互的面板中，只能展示BEV的风格，无法3D视角拖动，360度的观看，以及放大缩小非常不好用，滑动鼠标滚轮放大会导致网页滚动，根本无法正常的丝滑的放大和缩小，以及不支持3D视角的拖动和观看。分析本质的原理和逻辑，给出合理的解决方案，保证可以完美的支持3D视角的拖动和观看，以及丝滑的放大和缩小，保证用户体验的流畅和优雅。
+2. 以及每个展示不同的case的时候，不能仅仅支持用户点击某个按钮，还应该支持下方，或者左右有动态的按钮，点击，可以丝滑的切换到下一个case，或者上一个case，保证用户体验的流畅和优雅。对于 One-step generation in the real-time regime 和 Long-horizon rollout evidence and exported scene inspection 以及VectorWorld as a controllable layout prior for surround-view video generation 都应该支持这样的功能，保证用户体验的流畅和优雅。
+
+最后检查目前的网页呈现，从美观性，优雅性，学术性，交互性，等等角度分析是否还有哪些可以优化的地方？ 给出详细的分析和说明，并说明理由。
+回答前逐步思考：先分析所有的要求，再给出方案和回答和分析，给出准确的，完整的，详细的教程。 分析整体的设计流程，整体的原理和逻辑，然后给出准确的，可以复制粘贴的代码，指令，并给出准确的教程，保证我可以根据你的教程完成整个的项目的重构。
+请开始你的回答！ 回答前一步一步深度思考， Don't hold back. Give it your all!
+给出准确的，完整的，符号要求的，可以直接复制的代码。 务必保证我根据你的教程可以完美的，完整的完成整个网页的构建，解决所有的问题和满足所有需求。 务必保证最终给出的代码可以直接使用，不能有任何的错误，并且务必符合要求，保证最终的学术网页美观，优雅，清晰准确。
+
+以下是相关的代码：
+
+ls project-page/src/assets/paper_material
+DiT.pdf                                         SurroundView_Videos_contrl_layout3.mp4          VectorWorld_flow_denoise.mp4
+Explanation_paper.mp4                           SurroundView_Videos_contrl_layout4.mp4          VectorWorld_flow_denoise2.mp4
+Ken_Burns_Effect_Mosaic.mp4                     SurroundView_Videos_result.mp4                  VectorWorld_flow_denoise3.mp4
+Long_Range_Rollout_Sim_Env1.mp4                 SurroundView_Videos_result2.mp4                 VectorWorld_meanflow_denoise.mp4
+Long_Range_Rollout_Sim_Env2.mp4                 SurroundView_Videos_result3.mp4                 VectorWorld_meanflow_denoise2.mp4
+Motion_VAE.pdf                                  SurroundView_Videos_result4.mp4                 VectorWorld_meanflow_denoise3.mp4
+ScenDream_denoise.mp4                           SurroundView_Videos_vector_env.mp4              derta_sim.pdf
+ScenDream_denoise2.mp4                          SurroundView_Videos_vector_env2.mp4             efficiency_quality_4panel_horizontal.pdf
+ScenDream_denoise3.mp4                          SurroundView_Videos_vector_env3.mp4             viz_main_compare.pdf
+SurroundView_Videos_contrl_layout.mp4           SurroundView_Videos_vector_env4.mp4
+SurroundView_Videos_contrl_layout2.mp4          VectorWorld_Sim_Engine_Vis.pdf
+
+
+ls project-page/public/web_sim_envs/scenes/0_0
+agent_motion.f32        agent_types.u8          lane_conn_src.u16       lanes.f32               scene.json
+agent_states.f32        lane_conn_dst.u16       lane_conn_type.u8       route.f32               tile_corners.f32
+ls project-page/public/web_sim_envs/scenes/0_1
+agent_motion.f32        agent_types.u8          lane_conn_src.u16       lanes.f32               scene.json
+agent_states.f32        lane_conn_dst.u16       lane_conn_type.u8       route.f32               tile_corners.f32
+
+
+.github/workflows/astro.yml 内容如下：
+
+name: Deploy Astro site to Pages
+
+on:
+  push:
+    branches: ["master"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+env:
+  BUILD_PATH: "project-page"
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect package manager
+        id: detect-package-manager
+        working-directory: ${{ env.BUILD_PATH }}
+        run: |
+          if [ -f "yarn.lock" ]; then
+            echo "manager=yarn" >> $GITHUB_OUTPUT
+            echo "command=install" >> $GITHUB_OUTPUT
+            echo "runner=yarn" >> $GITHUB_OUTPUT
+            echo "lockfile=yarn.lock" >> $GITHUB_OUTPUT
+            exit 0
+          elif [ -f "package-lock.json" ]; then
+            echo "manager=npm" >> $GITHUB_OUTPUT
+            echo "command=ci" >> $GITHUB_OUTPUT
+            echo "runner=npx --no-install" >> $GITHUB_OUTPUT
+            echo "lockfile=package-lock.json" >> $GITHUB_OUTPUT
+            exit 0
+          elif [ -f "package.json" ]; then
+            echo "manager=npm" >> $GITHUB_OUTPUT
+            echo "command=install" >> $GITHUB_OUTPUT
+            echo "runner=npx --no-install" >> $GITHUB_OUTPUT
+            echo "lockfile=package.json" >> $GITHUB_OUTPUT
+            exit 0
+          else
+            echo "Unable to determine package manager"
+            exit 1
+          fi
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: ${{ steps.detect-package-manager.outputs.manager }}
+          cache-dependency-path: ${{ env.BUILD_PATH }}/${{ steps.detect-package-manager.outputs.lockfile }}
+
+      - name: Setup Pages
+        id: pages
+        uses: actions/configure-pages@v5
+
+      - name: Install dependencies
+        working-directory: ${{ env.BUILD_PATH }}
+        run: ${{ steps.detect-package-manager.outputs.manager }} ${{ steps.detect-package-manager.outputs.command }}
+
+      - name: Type check
+        working-directory: ${{ env.BUILD_PATH }}
+        run: ${{ steps.detect-package-manager.outputs.runner }} astro check
+
+      - name: Build with Astro
+        working-directory: ${{ env.BUILD_PATH }}
+        run: |
+          ${{ steps.detect-package-manager.outputs.runner }} astro build \
+            --site "${{ steps.pages.outputs.origin }}" \
+            --base "${{ steps.pages.outputs.base_path }}"
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: ${{ env.BUILD_PATH }}/dist
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
 """
 
 

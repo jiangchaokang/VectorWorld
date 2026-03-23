@@ -74,11 +74,24 @@ The system combines three core components: a **motion-aware gated VAE** for poli
 
 ## Table of Contents
 
+- [Overview](#overview)
+- [Highlights](#highlights)
+- [News](#news)
+- [Table of Contents](#table-of-contents)
 - [Architecture](#architecture)
 - [Installation](#installation)
 - [Pretrained Checkpoints](#pretrained-checkpoints)
 - [Datasets](#datasets)
+  - [Raw-data conversion](#raw-data-conversion)
+  - [Preprocessing](#preprocessing)
 - [Quick Start](#quick-start)
+  - [Step 1 — Prepare data](#step-1--prepare-data)
+  - [Step 2 — Train the VAE](#step-2--train-the-vae)
+  - [Step 3 — Cache latents for EGR-DiT training](#step-3--cache-latents-for-egr-dit-training)
+  - [Step 4 — Train the latent generator (EGR-DiT)](#step-4--train-the-latent-generator-egr-dit)
+  - [Step 5 — Generate scenes](#step-5--generate-scenes)
+  - [Step 6 — Train DeltaSim](#step-6--train-deltasim)
+  - [Step 7 — Closed-loop simulation](#step-7--closed-loop-simulation)
 - [Configuration](#configuration)
 - [Repository Structure](#repository-structure)
 - [Acknowledgements](#acknowledgements)
@@ -400,10 +413,14 @@ This project is inspired by and builds upon several excellent open-source effort
 If you find this work useful, please consider citing:
 
 ```bibtex
-@article{jiang2025vectorworld,
-  title   = {VectorWorld: Efficient Streaming World Model via Diffusion Flow on Vector Graphs},
-  author  = {Jiang, Chaokang and Zhou, Desen and Liu, Jiuming and Sun, Kevin Li},
-  year    = {2025}
+@misc{jiang2026vectorworldefficientstreamingworld,
+      title={VectorWorld: Efficient Streaming World Model via Diffusion Flow on Vector Graphs},
+      author={Chaokang Jiang and Desen Zhou and Jiuming Liu and Kevin Li Sun},
+      year={2026},
+      eprint={2603.17652},
+      archivePrefix={arXiv},
+      primaryClass={cs.RO},
+      url={https://arxiv.org/abs/2603.17652},
 }
 ```
 
