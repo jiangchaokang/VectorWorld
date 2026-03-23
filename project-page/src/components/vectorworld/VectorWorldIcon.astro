@@ -1,0 +1,138 @@
+---
+const { size = "1em", class: className = "" } = Astro.props;
+
+const uid = `vw-${Math.random().toString(36).slice(2, 9)}`;
+const bg = `${uid}-bg`;
+const frame = `${uid}-frame`;
+const orbit = `${uid}-orbit`;
+const laneL = `${uid}-lane-l`;
+const laneR = `${uid}-lane-r`;
+const coreGlow = `${uid}-core-glow`;
+---
+
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 64 64"
+  width={size}
+  height={size}
+  class={`vw-vectorworld-icon ${className}`}
+  fill="none"
+  aria-hidden="true"
+>
+  <defs>
+    <linearGradient id={bg} x1="8" y1="6" x2="56" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0B132B" />
+      <stop offset="1" stop-color="#111827" />
+    </linearGradient>
+
+    <linearGradient id={frame} x1="6" y1="6" x2="58" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#67E8F9" stop-opacity="0.38" />
+      <stop offset="1" stop-color="#A78BFA" stop-opacity="0.28" />
+    </linearGradient>
+
+    <linearGradient id={orbit} x1="14" y1="40" x2="50" y2="12" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#22D3EE" stop-opacity="0.20" />
+      <stop offset="1" stop-color="#C4B5FD" stop-opacity="0.70" />
+    </linearGradient>
+
+    <linearGradient id={laneL} x1="18" y1="16" x2="31" y2="48" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#67E8F9" />
+      <stop offset="1" stop-color="#60A5FA" />
+    </linearGradient>
+
+    <linearGradient id={laneR} x1="46" y1="16" x2="33" y2="48" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#A78BFA" />
+      <stop offset="1" stop-color="#60A5FA" />
+    </linearGradient>
+
+    <radialGradient
+      id={coreGlow}
+      cx="0"
+      cy="0"
+      r="1"
+      gradientUnits="userSpaceOnUse"
+      gradientTransform="translate(32 48) rotate(90) scale(10)"
+    >
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.95" />
+      <stop offset="0.32" stop-color="#C4B5FD" stop-opacity="0.65" />
+      <stop offset="1" stop-color="#60A5FA" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+
+  <!-- 背景 tile -->
+  <rect x="4" y="4" width="56" height="56" rx="18" fill={`url(#${bg})`} />
+  <rect
+    x="6.5"
+    y="6.5"
+    width="51"
+    height="51"
+    rx="15.5"
+    stroke={`url(#${frame})`}
+    stroke-width="1.5"
+  />
+
+  <!-- 世界 / 轨道感 -->
+  <path
+    d="M14 40C16 24 28 11 50 12"
+    stroke={`url(#${orbit})`}
+    stroke-width="2.4"
+    stroke-linecap="round"
+    opacity="0.9"
+  />
+
+  <!-- V 字道路 -->
+  <path
+    d="M18 16C21 28 25 38 31 48"
+    stroke={`url(#${laneL})`}
+    stroke-width="4.5"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <path
+    d="M46 16C43 28 39 38 33 48"
+    stroke={`url(#${laneR})`}
+    stroke-width="4.5"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+
+  <!-- 顶部连边，强调 vector graph -->
+  <path
+    d="M18 16Q32 6 46 16"
+    stroke="#E2E8F0"
+    stroke-opacity="0.18"
+    stroke-width="2.2"
+    stroke-linecap="round"
+  />
+
+  <!-- 图节点 -->
+  <circle cx="18" cy="16" r="4.3" fill="#0EA5E9" stroke="#E0F2FE" stroke-width="1.4" />
+  <circle cx="46" cy="16" r="4.3" fill="#8B5CF6" stroke="#F5F3FF" stroke-width="1.4" />
+
+  <!-- 核心状态节点 -->
+  <circle cx="32" cy="48" r="8" fill={`url(#${coreGlow})`} />
+  <circle cx="32" cy="48" r="4.8" fill="#F8FAFC" stroke="#60A5FA" stroke-width="1.3" />
+
+  <!-- streaming / completion 的小星芒 -->
+  <path
+    d="M52 8L53.4 11.6L57 13L53.4 14.4L52 18L50.6 14.4L47 13L50.6 11.6Z"
+    fill="#FDE68A"
+    opacity="0.92"
+  />
+</svg>
+
+<style>
+  .vw-vectorworld-icon {
+    display: block;
+    flex: none;
+    filter: drop-shadow(0 8px 18px rgba(56, 189, 248, 0.18));
+    transition:
+      transform 180ms ease,
+      filter 180ms ease;
+  }
+
+  .vw-vectorworld-icon:hover {
+    transform: translateY(-1px);
+    filter: drop-shadow(0 10px 22px rgba(139, 92, 246, 0.22));
+  }
+</style>

@@ -11,16 +11,16 @@ interface Props {
 const { sections } = Astro.props;
 ---
 
-<nav data-anchor-nav class="not-prose sticky top-3 z-40 mb-8">
-  <div class="overflow-x-auto rounded-full border border-zinc-200 bg-white/90 px-3 py-3 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/85">
-    <ul class="m-0 flex min-w-max list-none gap-2 p-0">
+<nav data-anchor-nav class="not-prose sticky top-3 z-40 mb-8" aria-label="Section navigation">
+  <div class="vw-anchor-shell">
+    <ul class="vw-anchor-list">
       {
         sections.map((section) => (
           <li>
             <a
               href={`#${section.id}`}
               data-section-link={section.id}
-              class="block rounded-full px-4 py-2 text-sm font-medium text-zinc-600 transition hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+              class="vw-anchor-link"
             >
               {section.label}
             </a>
@@ -33,71 +33,110 @@ const { sections } = Astro.props;
 
 <script is:inline>
   (() => {
-    const nav = document.querySelector("[data-anchor-nav]");
-    if (!(nav instanceof HTMLElement)) return;
-    if (nav.dataset.ready === "true") return;
-    nav.dataset.ready = "true";
+    const setupNav = (nav) => {
+      if (!(nav instanceof HTMLElement)) return;
+      if (nav.dataset.ready === "true") return;
+      nav.dataset.ready = "true";
 
-    const links = Array.from(nav.querySelectorAll("a[data-section-link]"));
-    const activeClasses = [
-      "bg-zinc-900",
-      "text-white",
-      "dark:bg-zinc-100",
-      "dark:text-zinc-900",
-    ];
-    const inactiveClasses = ["text-zinc-600", "dark:text-zinc-400"];
+      const shell = nav.querySelector(".vw-anchor-shell");
+      const links = Array.from(
+        nav.querySelectorAll("a[data-section-link]"),
+      );
 
-    const setActive = (id) => {
-      links.forEach((link) => {
-        const isActive = link.dataset.sectionLink === id;
-        activeClasses.forEach((className) => link.classList.toggle(className, isActive));
-        inactiveClasses.forEach((className) => link.classList.toggle(className, !isActive));
-      });
-    };
+      const setActive = (id) => {
+        links.forEach((link) => {
+          const isActive = link.dataset.sectionLink === id;
+          link.classList.toggle("is-active", isActive);
 
-    links.forEach((link) => {
-      link.addEventListener("click", (event) => {
-        const id = link.dataset.sectionLink;
-        if (!id) return;
+          if (isActive) {
+            link.setAttribute("aria-current", "true");
 
+            if (shell instanceof HTMLElement) {
+              const shellRect = shell.getBoundingClientRect();
+              const linkRect = link.getBoundingClientRect();
+
+              if (
+                linkRect.left < shellRect.left ||
+                linkRect.right > shellRect.right
+              ) {
+                link.scrollIntoView({
+                  behavior: "smooth",
+                  inline: "center",
+                  block: "nearest",
+                });
+              }
+            }
+          } else {
+            link.removeAttribute("aria-current");
+          }
+        });
+      };
+
+      const getTargetTop = (id) => {
         const target = document.getElementById(id);
-        if (!target) return;
+        if (!(target instanceof HTMLElement)) return null;
+        const offset = 112;
+        return target.getBoundingClientRect().top + window.scrollY - offset;
+      };
 
-        event.preventDefault();
-        target.scrollIntoView({ behavior: "smooth", block: "start" });
-        history.replaceState(null, "", `#${id}`);
-        setActive(id);
+      links.forEach((link) => {
+        link.addEventListener("click", (event) => {
+          const id = link.dataset.sectionLink;
+          if (!id) return;
+
+          const top = getTargetTop(id);
+          if (top === null) return;
+
+          event.preventDefault();
+          window.scrollTo({ top, behavior: "smooth" });
+          history.replaceState(null, "", `#${id}`);
+          setActive(id);
+        });
       });
-    });
 
-    const observedSections = links
-      .map((link) => document.getElementById(link.dataset.sectionLink || ""))
-      .filter(Boolean);
+      const sections = links
+        .map((link) => {
+          const id = link.dataset.sectionLink;
+          return id ? document.getElementById(id) : null;
+        })
+        .filter((section) => section instanceof HTMLElement);
 
-    if (window.location.hash) {
-      setActive(window.location.hash.replace("#", ""));
-    } else if (observedSections[0]) {
-      setActive(observedSections[0].id);
-    }
+      if (window.location.hash) {
+        setActive(window.location.hash.replace("#", ""));
+      } else if (sections[0] instanceof HTMLElement) {
+        setActive(sections[0].id);
+      }
 
-    if (observedSections.length > 0) {
+      if (sections.length === 0) return;
+
       const observer = new IntersectionObserver(
         (entries) => {
           const visibleEntries = entries
             .filter((entry) => entry.isIntersecting)
-            .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+            .sort(
+              (a, b) =>
+                Math.abs(a.boundingClientRect.top) -
+                Math.abs(b.boundingClientRect.top),
+            );
 
           if (visibleEntries[0]) {
             setActive(visibleEntries[0].target.id);
           }
         },
         {
-          rootMargin: "-35% 0px -55% 0px",
+          rootMargin: "-20% 0px -65% 0px",
           threshold: [0.1, 0.25, 0.5, 0.75],
         },
       );
 
-      observedSections.forEach((section) => observer.observe(section));
-    }
+      sections.forEach((section) => observer.observe(section));
+    };
+
+    const setup = () => {
+      document.querySelectorAll("[data-anchor-nav]").forEach(setupNav);
+    };
+
+    setup();
+    document.addEventListener("astro:after-swap", setup);
   })();
 </script>

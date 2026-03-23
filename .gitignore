@@ -19,6 +19,7 @@ project-page/dist/
 
 # dependencies
 *node_modules*
+project-page/scripts/**
 
 # logs
 npm-debug.log*

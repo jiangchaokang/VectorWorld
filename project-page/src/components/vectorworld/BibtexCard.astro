@@ -1,0 +1,78 @@
+---
+interface Props {
+  code: string;
+  title?: string;
+  subtitle?: string;
+}
+
+const {
+  code,
+  title = "BibTeX",
+  subtitle = "Copy directly into your bibliography file.",
+} = Astro.props;
+
+const blockId = `bibtex-${Math.random().toString(36).slice(2, 10)}`;
+---
+
+<div class="not-prose overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+  <div class="flex flex-col gap-3 border-b border-zinc-200 px-5 py-4 dark:border-zinc-800 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <p class="vw-stat-label">{title}</p>
+      <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+        {subtitle}
+      </p>
+    </div>
+
+    <button
+      type="button"
+      data-copy-target={blockId}
+      class="vw-button-secondary"
+    >
+      Copy BibTeX
+    </button>
+  </div>
+
+  <pre
+    id={blockId}
+    class="m-0 overflow-x-auto bg-zinc-50/80 p-5 text-sm leading-7 text-zinc-800 dark:bg-zinc-950/80 dark:text-zinc-200"
+  ><code>{code}</code></pre>
+</div>
+
+<script is:inline>
+  (() => {
+    const setup = () => {
+      document
+        .querySelectorAll("button[data-copy-target]")
+        .forEach((button) => {
+          if (!(button instanceof HTMLButtonElement)) return;
+          if (button.dataset.ready === "true") return;
+
+          button.dataset.ready = "true";
+          button.dataset.label = button.textContent ?? "Copy BibTeX";
+
+          button.addEventListener("click", async () => {
+            const targetId = button.dataset.copyTarget;
+            const label = button.dataset.label ?? "Copy BibTeX";
+            const target = targetId ? document.getElementById(targetId) : null;
+            const text = target?.textContent?.trim() ?? "";
+
+            if (!text) return;
+
+            try {
+              await navigator.clipboard.writeText(text);
+              button.textContent = "Copied";
+            } catch {
+              button.textContent = "Copy failed";
+            }
+
+            window.setTimeout(() => {
+              button.textContent = label;
+            }, 1400);
+          });
+        });
+    };
+
+    setup();
+    document.addEventListener("astro:after-swap", setup);
+  })();
+</script>

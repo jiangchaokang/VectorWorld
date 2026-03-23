@@ -19,6 +19,7 @@ interface Frontmatter {
   notes?: Note[];
   links?: Link[];
   description?: string;
+  highlights?: string[];
   favicon: string;
   thumbnail?: string;
   theme?: "device" | "light" | "dark";
@@ -31,6 +32,7 @@ const {
   notes,
   links,
   description,
+  highlights = [],
   favicon,
   thumbnail,
   theme = "device",
@@ -109,6 +111,7 @@ const ogImageUrl =
       notes={notes}
       links={links}
       description={description}
+      highlights={highlights}
     />
 
     <main>

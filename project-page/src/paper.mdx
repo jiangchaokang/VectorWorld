@@ -15,7 +15,12 @@ authors:
     institution: "Bosch XC-CN"
 theme: "device"
 favicon: "favicon.svg"
-description: "A streaming vector-graph world model that warm-starts history-conditioned policies, performs solver-free one-step frontier completion, and supports kilometer-scale closed-loop autonomous-driving rollout."
+description: "Streaming vector-graph world model for autonomous-driving simulation: warm-started initialization, one-step frontier completion, and kilometer-scale closed-loop rollout."
+highlights:
+  - "Warm-start interaction state aligned with history-conditioned policies"
+  - "≈ 5.6 ms one-step frontier completion per 64 m × 64 m tile"
+  - "Kilometer-scale closed-loop rollout with reactive traffic"
+  - "Controllable vector prior for surround-view video generation"
 links:
   - name: "arXiv"
     url: "https://arxiv.org/abs/2603.17652"
@@ -48,14 +53,25 @@ import systemFigurePdf from "./assets/paper_material/VectorWorld_Sim_Engine_Vis.
 import qualitativeFigurePdf from "./assets/paper_material/viz_main_compare.pdf";
 import efficiencyFigurePdf from "./assets/paper_material/efficiency_quality_4panel_horizontal.pdf";
 
+import BibtexCard from "./components/vectorworld/BibtexCard.astro";
+export const bibtex = `@misc{jiang2026vectorworldefficientstreamingworld,
+  title={VectorWorld: Efficient Streaming World Model via Diffusion Flow on Vector Graphs},
+  author={Chaokang Jiang and Desen Zhou and Jiuming Liu and Kevin Li Sun},
+  year={2026},
+  eprint={2603.17652},
+  archivePrefix={arXiv},
+  primaryClass={cs.RO},
+  url={https://arxiv.org/abs/2603.17652},
+}`;
+
 export const navSections = [
-  { id: "overview", label: "Overview" },
+  { id: "overview", label: "TL;DR" },
   { id: "video-overview", label: "Video" },
   { id: "method", label: "Method" },
-  { id: "quality", label: "Quality" },
+  { id: "quality", label: "Init quality" },
   { id: "efficiency", label: "Efficiency" },
   { id: "rollout", label: "Closed loop" },
-  { id: "surround-view", label: "Sensor-level" },
+  { id: "surround-view", label: "Sensor video" },
   { id: "bibtex", label: "BibTeX" },
 ];
 
@@ -456,18 +472,14 @@ export const navSections = [
   <SectionHeading
     eyebrow="BibTeX"
     title="Citation"
-    subtitle="If you find VectorWorld useful, please cite the project page or the paper."
+    subtitle="If you find VectorWorld useful, please cite the paper."
     center={true}
   />
-</section>
 
-```bibtex
-@misc{jiang2026vectorworldefficientstreamingworld,
-      title={VectorWorld: Efficient Streaming World Model via Diffusion Flow on Vector Graphs}, 
-      author={Chaokang Jiang and Desen Zhou and Jiuming Liu and Kevin Li Sun},
-      year={2026},
-      eprint={2603.17652},
-      archivePrefix={arXiv},
-      primaryClass={cs.RO},
-      url={https://arxiv.org/abs/2603.17652}, 
-}
+  <div class="not-prose mx-auto max-w-4xl">
+    <BibtexCard
+      code={bibtex}
+      subtitle="Copy directly into your bibliography file."
+    />
+  </div>
+</section>
