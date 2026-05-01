@@ -1,0 +1,51 @@
+---
+import VectorWorldIcon from "./VectorWorldIcon.astro";
+
+interface Props {
+  title: string;
+  iconSize?: string;
+  class?: string;
+}
+
+const {
+  title,
+  iconSize = "0.95em",
+  class: className = "",
+} = Astro.props;
+---
+
+<span class:list={["vw-wordmark", className]}>
+  <span class="vw-wordmark__icon" aria-hidden="true">
+    <VectorWorldIcon size={iconSize} />
+  </span>
+  <span class="vw-wordmark__text">{title}</span>
+</span>
+
+<style>
+  .vw-wordmark {
+    display: inline-grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 0.55rem;
+    max-width: 100%;
+  }
+
+  .vw-wordmark__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding-top: 0.02em;
+    line-height: 1;
+  }
+
+  .vw-wordmark__text {
+    min-width: 0;
+    line-height: 1;
+  }
+
+  @media (max-width: 640px) {
+    .vw-wordmark {
+      gap: 0.45rem;
+    }
+  }
+</style>

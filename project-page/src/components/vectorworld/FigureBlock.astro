@@ -1,0 +1,155 @@
+---
+import Video from "../Video.astro";
+import Picture from "../Picture.astro";
+
+type WidthVariant = "prose" | "figure" | "wide" | "hero" | "full";
+type StageVariant = "compact" | "balanced" | "panorama" | "tall";
+
+interface Props {
+  kind: "image" | "video";
+  src: any;
+  href?: any;
+  alt?: string;
+  caption?: string;
+  width?: WidthVariant;
+  label?: string;
+  openLabel?: string;
+  controls?: boolean;
+  autoplay?: boolean;
+  muted?: boolean;
+  loop?: boolean;
+  showOpenButton?: boolean;
+  stage?: StageVariant;
+  aspectRatio?: string;
+  mediaWrapClass?: string;
+  mediaClass?: string;
+  captionClass?: string;
+}
+
+const {
+  kind,
+  src,
+  href,
+  alt = "",
+  caption,
+  width = "figure",
+  label,
+  openLabel = "Open original",
+  controls = true,
+  autoplay = false,
+  muted = true,
+  loop = false,
+  showOpenButton = true,
+  stage = "balanced",
+  aspectRatio,
+  mediaWrapClass = "",
+  mediaClass = "",
+  captionClass = "",
+} = Astro.props;
+
+const widthClass = {
+  prose: "max-w-3xl",
+  figure: "max-w-5xl",
+  wide: "max-w-6xl",
+  hero: "max-w-7xl",
+  full: "max-w-screen-xl",
+}[width];
+
+const stageClass = {
+  compact: "min-h-72 md:min-h-80",
+  balanced: "min-h-80 md:min-h-96",
+  panorama: "min-h-56 md:min-h-72",
+  tall: "min-h-[28rem] md:min-h-[38rem]",
+}[stage];
+
+function resolveAssetUrl(value: any) {
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (typeof value === "object" && value && "src" in value) {
+    return String(value.src);
+  }
+
+  return "";
+}
+
+const resolvedSrc = resolveAssetUrl(src);
+const resolvedHref = href
+  ? resolveAssetUrl(href)
+  : kind === "video"
+    ? resolvedSrc
+    : "";
+const headerLabel = label ?? (kind === "video" ? "Video" : "Figure");
+const effectiveOpenLabel =
+  kind === "image" && openLabel === "Open original" ? "Open PDF" : openLabel;
+const stageStyle = aspectRatio ? `aspect-ratio: ${aspectRatio};` : undefined;
+---
+
+<figure class:list={["not-prose mx-auto w-full", widthClass]}>
+  <div class="group overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
+    <div class="flex items-center justify-between gap-3 border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
+      <div class="text-xs font-semibold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
+        {headerLabel}
+      </div>
+
+      {showOpenButton && resolvedHref && (
+        <a
+          href={resolvedHref}
+          target="_blank"
+          rel="noreferrer"
+          class="rounded-full border border-zinc-300 px-3 py-1 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+        >
+          {effectiveOpenLabel}
+        </a>
+      )}
+    </div>
+
+    <div class="bg-zinc-50/90 p-3 dark:bg-zinc-950/60 md:p-4">
+      <div
+        class:list={[
+          "flex items-center justify-center overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-inner dark:border-zinc-800 dark:bg-zinc-950",
+          !aspectRatio && stageClass,
+        ]}
+        style={stageStyle}
+      >
+        <div class:list={["mx-auto w-full", mediaWrapClass]}>
+          {
+            kind === "video" ? (
+              <Video
+                src={src}
+                controls={controls}
+                autoplay={autoplay}
+                muted={muted}
+                loop={loop}
+                class={["h-full w-full object-contain", mediaClass].filter(Boolean).join(" ")}
+              />
+            ) : (
+              <div class="mx-auto flex items-center justify-center p-3 md:p-5">
+                <Picture
+                  src={src}
+                  alt={alt}
+                  expandable={true}
+                  lightboxCaption={caption ?? alt}
+                  lightboxOriginal={resolvedHref || undefined}
+                  class={["mx-auto w-full", mediaClass].filter(Boolean).join(" ")}
+                />
+              </div>
+            )
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {caption && (
+    <figcaption
+      class:list={[
+        "mt-3 text-center text-sm leading-6 text-zinc-600 dark:text-zinc-400",
+        captionClass,
+      ]}
+    >
+      {caption}
+    </figcaption>
+  )}
+</figure>

@@ -1,0 +1,218 @@
+---
+import { renderPDF } from "../../lib/render-pdf";
+import Picture from "../Picture.astro";
+
+import motionVaePdfUrl from "../../assets/paper_material/Motion_VAE.pdf";
+import ditPdfUrl from "../../assets/paper_material/DiT.pdf";
+import deltaSimPdfUrl from "../../assets/paper_material/derta_sim.pdf";
+
+type Tone = "blue" | "violet" | "emerald";
+type RenderedPdf = Awaited<ReturnType<typeof renderPDF>>;
+
+type Step = {
+  id: string;
+  label: string;
+  title: string;
+  summary: string;
+  bullets: readonly string[];
+  figureSrc: `${string}.pdf`;
+  figureHref: string;
+  alt: string;
+  tone: Tone;
+  preview: RenderedPdf;
+};
+
+const referencePreview = await renderPDF("./assets/paper_material/DiT.pdf");
+const referenceAspectRatio = `${referencePreview.width} / ${referencePreview.height}`;
+
+const baseSteps = [
+  {
+    id: "interaction-state",
+    label: "Component 1 · Interface",
+    title: "Motion-aware interaction-state VAE",
+    summary: "Warm-start interface for history-conditioned policies.",
+    bullets: [
+      "Selective motion gating.",
+      "Policy-compatible pseudo-history.",
+      "Lower early-horizon jerk.",
+    ],
+    figureSrc: "./assets/paper_material/Motion_VAE.pdf",
+    figureHref: motionVaePdfUrl,
+    alt: "Motion-aware interaction-state VAE figure",
+    tone: "blue",
+  },
+  {
+    id: "edge-dit",
+    label: "Component 2 · Generator",
+    title: "Edge-gated relational DiT + MeanFlow/JVP",
+    summary: "One-step masked completion on heterogeneous vector graphs.",
+    bullets: [
+      "Edge-aware relational attention.",
+      "MeanFlow + JVP for one-step transport.",
+      "Streaming frontier outpainting.",
+    ],
+    figureSrc: "./assets/paper_material/DiT.pdf",
+    figureHref: ditPdfUrl,
+    alt: "Edge-gated relational DiT figure",
+    tone: "violet",
+  },
+  {
+    id: "deltasim",
+    label: "Component 3 · Closed loop",
+    title: "DeltaSim",
+    summary: "Physics-aligned NPC policy for kilometer-scale rollout.",
+    bullets: [
+      "Hybrid discrete–continuous actions.",
+      "Differentiable kinematic shaping.",
+      "Lower compounding drift.",
+    ],
+    figureSrc: "./assets/paper_material/derta_sim.pdf",
+    figureHref: deltaSimPdfUrl,
+    alt: "DeltaSim figure",
+    tone: "emerald",
+  },
+] as const;
+
+const steps: Step[] = await Promise.all(
+  baseSteps.map(async (step) => ({
+    ...step,
+    preview: await renderPDF(step.figureSrc),
+  })),
+);
+
+function toneBorder(tone: Tone) {
+  switch (tone) {
+    case "violet":
+      return "border-violet-200 dark:border-violet-500/20";
+    case "emerald":
+      return "border-emerald-200 dark:border-emerald-500/20";
+    default:
+      return "border-blue-200 dark:border-blue-500/20";
+  }
+}
+
+function toneBadge(tone: Tone) {
+  switch (tone) {
+    case "violet":
+      return "bg-violet-100 text-violet-700 dark:bg-violet-500/10 dark:text-violet-300";
+    case "emerald":
+      return "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300";
+    default:
+      return "bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300";
+  }
+}
+
+function toneDot(tone: Tone) {
+  switch (tone) {
+    case "violet":
+      return "bg-violet-500";
+    case "emerald":
+      return "bg-emerald-500";
+    default:
+      return "bg-blue-500";
+  }
+}
+---
+
+<div class="not-prose space-y-6">
+  <div class="rounded-3xl border border-zinc-200 bg-zinc-50/90 p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/70 md:p-5">
+    <div class="flex flex-wrap items-center gap-2">
+      <span class="vw-eyebrow">Deployment loop</span>
+      <span class="rounded-full bg-white px-3 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
+        Warm start
+      </span>
+      <span class="text-zinc-400">→</span>
+      <span class="rounded-full bg-white px-3 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
+        One-step completion
+      </span>
+      <span class="text-zinc-400">→</span>
+      <span class="rounded-full bg-white px-3 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
+        Physics-aligned closed loop
+      </span>
+    </div>
+
+    <p class="mt-3 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+      One stack, three jobs: initialize interaction state, outpaint the frontier in one step,
+      and keep NPC behavior feasible over long horizons.
+    </p>
+  </div>
+
+  <div class="grid gap-6 xl:grid-cols-3">
+    {
+      steps.map((step, index) => (
+        <article
+          class:list={[
+            "overflow-hidden rounded-3xl border bg-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md dark:bg-zinc-900",
+            toneBorder(step.tone),
+          ]}
+        >
+          <div class="p-6">
+            <div class="flex items-start justify-between gap-3">
+              <span
+                class:list={[
+                  "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wider",
+                  toneBadge(step.tone),
+                ]}
+              >
+                {step.label}
+              </span>
+
+              <span class="rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                0{index + 1}
+              </span>
+            </div>
+
+            <h3 class="mt-4 text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 md:text-2xl">
+              {step.title}
+            </h3>
+
+            <p class="mt-3 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+              {step.summary}
+            </p>
+
+            <ul class="mt-4 space-y-2.5">
+              {
+                step.bullets.map((bullet) => (
+                  <li class="flex items-start gap-3 text-sm leading-6 text-zinc-700 dark:text-zinc-300">
+                    <span class:list={["mt-2 h-2 w-2 shrink-0 rounded-full", toneDot(step.tone)]}></span>
+                    <span>{bullet}</span>
+                  </li>
+                ))
+              }
+            </ul>
+          </div>
+
+          <div class="border-t border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-950/50 md:p-5">
+            <div class="overflow-hidden rounded-2xl border border-zinc-200 bg-white p-4 shadow-inner dark:border-zinc-800 dark:bg-zinc-950">
+              <div class="flex items-center justify-center" style={`aspect-ratio: ${referenceAspectRatio};`}>
+                <Picture
+                  src={step.preview}
+                  alt={step.alt}
+                  expandable={true}
+                  lightboxCaption={`${step.title}. ${step.summary}`}
+                  lightboxOriginal={step.figureHref}
+                  class="block max-h-full w-auto max-w-full rounded-xl"
+                />
+              </div>
+            </div>
+
+            <div class="mt-3 flex items-center justify-between gap-3">
+              <span class="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                Click figure to zoom in page
+              </span>
+
+              <a
+                href={step.figureHref}
+                target="_blank"
+                rel="noreferrer"
+                class="rounded-full border border-zinc-200 px-3 py-1 text-xs font-medium text-zinc-600 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              >
+                Open PDF
+              </a>
+            </div>
+          </div>
+        </article>
+      ))
+    }
+  </div>
+</div>

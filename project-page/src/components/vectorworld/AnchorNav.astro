@@ -1,0 +1,142 @@
+---
+interface SectionLink {
+  id: string;
+  label: string;
+}
+
+interface Props {
+  sections: SectionLink[];
+}
+
+const { sections } = Astro.props;
+---
+
+<nav data-anchor-nav class="not-prose sticky top-3 z-40 mb-8" aria-label="Section navigation">
+  <div class="vw-anchor-shell">
+    <ul class="vw-anchor-list">
+      {
+        sections.map((section) => (
+          <li>
+            <a
+              href={`#${section.id}`}
+              data-section-link={section.id}
+              class="vw-anchor-link"
+            >
+              {section.label}
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</nav>
+
+<script is:inline>
+  (() => {
+    const setupNav = (nav) => {
+      if (!(nav instanceof HTMLElement)) return;
+      if (nav.dataset.ready === "true") return;
+      nav.dataset.ready = "true";
+
+      const shell = nav.querySelector(".vw-anchor-shell");
+      const links = Array.from(
+        nav.querySelectorAll("a[data-section-link]"),
+      );
+
+      const setActive = (id) => {
+        links.forEach((link) => {
+          const isActive = link.dataset.sectionLink === id;
+          link.classList.toggle("is-active", isActive);
+
+          if (isActive) {
+            link.setAttribute("aria-current", "true");
+
+            if (shell instanceof HTMLElement) {
+              const shellRect = shell.getBoundingClientRect();
+              const linkRect = link.getBoundingClientRect();
+
+              if (
+                linkRect.left < shellRect.left ||
+                linkRect.right > shellRect.right
+              ) {
+                link.scrollIntoView({
+                  behavior: "smooth",
+                  inline: "center",
+                  block: "nearest",
+                });
+              }
+            }
+          } else {
+            link.removeAttribute("aria-current");
+          }
+        });
+      };
+
+      const getTargetTop = (id) => {
+        const target = document.getElementById(id);
+        if (!(target instanceof HTMLElement)) return null;
+        const offset = 112;
+        return target.getBoundingClientRect().top + window.scrollY - offset;
+      };
+
+      links.forEach((link) => {
+        link.addEventListener("click", (event) => {
+          const id = link.dataset.sectionLink;
+          if (!id) return;
+
+          const top = getTargetTop(id);
+          if (top === null) return;
+
+          event.preventDefault();
+          window.scrollTo({ top, behavior: "smooth" });
+          history.replaceState(null, "", `#${id}`);
+          setActive(id);
+        });
+      });
+
+      const sections = links
+        .map((link) => {
+          const id = link.dataset.sectionLink;
+          return id ? document.getElementById(id) : null;
+        })
+        .filter((section) => section instanceof HTMLElement);
+
+      if (window.location.hash) {
+        setActive(window.location.hash.replace("#", ""));
+      } else if (sections[0] instanceof HTMLElement) {
+        setActive(sections[0].id);
+      }
+
+      if (sections.length === 0) return;
+
+      const observer = new IntersectionObserver(
+        (entries) => {
+          const visibleEntries = entries
+            .filter((entry) => entry.isIntersecting)
+            .sort(
+              (a, b) =>
+                Math.abs(a.boundingClientRect.top) -
+                Math.abs(b.boundingClientRect.top),
+            );
+
+          if (visibleEntries[0]) {
+            setActive(visibleEntries[0].target.id);
+          }
+        },
+        {
+          rootMargin: "-20% 0px -65% 0px",
+          threshold: [0.1, 0.25, 0.5, 0.75],
+        },
+      );
+
+      sections.forEach((section) => observer.observe(section));
+    };
+
+    const setup = () => {
+      document.querySelectorAll("[data-anchor-nav]").forEach(setupNav);
+    };
+
+    setup();
+    document.addEventListener("astro:after-swap", setup);
+  })();
+</script>

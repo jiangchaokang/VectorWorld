@@ -1,0 +1,82 @@
+---
+import EfficiencyExplorerClient, {
+  type CaseConfig,
+  type MethodKey,
+  type MethodMeta,
+} from "./EfficiencyExplorerClient.tsx";
+
+import scenedream1 from "../../assets/paper_material/ScenDream_denoise.mp4";
+import scenedream2 from "../../assets/paper_material/ScenDream_denoise2.mp4";
+import scenedream3 from "../../assets/paper_material/ScenDream_denoise3.mp4";
+
+import meanflow1 from "../../assets/paper_material/VectorWorld_meanflow_denoise.mp4";
+import meanflow2 from "../../assets/paper_material/VectorWorld_meanflow_denoise2.mp4";
+import meanflow3 from "../../assets/paper_material/VectorWorld_meanflow_denoise3.mp4";
+
+import flow1 from "../../assets/paper_material/VectorWorld_flow_denoise.mp4";
+import flow2 from "../../assets/paper_material/VectorWorld_flow_denoise2.mp4";
+import flow3 from "../../assets/paper_material/VectorWorld_flow_denoise3.mp4";
+
+const methods = {
+  scenedream: {
+    key: "scenedream",
+    label: "ScenDream",
+    badge: "Multi-step baseline",
+    note: "Latent diffusion baseline.",
+    accent: "neutral",
+  },
+  fewstep: {
+    key: "fewstep",
+    label: "VectorWorld few-step",
+    badge: "MeanFlow 3–5 step",
+    note: "Higher fidelity when a small offline budget.",
+    accent: "blue",
+  },
+  onestep: {
+    key: "onestep",
+    label: "VectorWorld one-step",
+    badge: "Deployment point",
+    note: "Solver-free + JVP for online completion.",
+    accent: "violet",
+  },
+} satisfies Record<MethodKey, MethodMeta>;
+
+const cases = [
+  {
+    key: "case-a",
+    label: "Case 1",
+    description: "Frontier completion under the strict one-step deployment budget.",
+    videos: {
+      scenedream: scenedream1,
+      fewstep: flow1,
+      onestep: meanflow1,
+    },
+  },
+  {
+    key: "case-b",
+    label: "Case 2",
+    description: "Repeated rollout-time generation with stable topology continuation.",
+    videos: {
+      scenedream: scenedream2,
+      fewstep: flow2,
+      onestep: meanflow2,
+    },
+  },
+  {
+    key: "case-c",
+    label: "Case 3",
+    description: "Low-latency online completion at matched clip progress.",
+    videos: {
+      scenedream: scenedream3,
+      fewstep: flow3,
+      onestep: meanflow3,
+    },
+  },
+] satisfies CaseConfig[];
+---
+
+<EfficiencyExplorerClient
+  client:visible={{ rootMargin: "200px" }}
+  methods={methods}
+  cases={cases}
+/>

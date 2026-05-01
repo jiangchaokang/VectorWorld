@@ -1,0 +1,82 @@
+---
+import { Icon } from "astro-icon/components";
+import type { Link } from "../types/types";
+
+interface Props {
+  links?: Link[];
+}
+
+const { links = [] } = Astro.props;
+
+function getTone(link: Link) {
+  const key = `${link.name} ${link.icon ?? ""}`.toLowerCase();
+
+  if (key.includes("arxiv")) {
+    return {
+      button:
+        "border-rose-200 bg-rose-50/90 text-rose-700 hover:border-rose-300 hover:bg-rose-100 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-200 dark:hover:border-rose-500/40 dark:hover:bg-rose-500/15",
+      icon: "text-rose-600 dark:text-rose-300",
+    };
+  }
+
+  if (key.includes("github")) {
+    return {
+      button:
+        "border-zinc-300 bg-white/95 text-zinc-800 hover:border-zinc-400 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900/95 dark:text-zinc-100 dark:hover:border-zinc-600 dark:hover:bg-zinc-800",
+      icon: "text-zinc-700 dark:text-zinc-300",
+    };
+  }
+
+  if (
+    key.includes("hugging face") ||
+    key.includes("huggingface") ||
+    key.includes("dataset")
+  ) {
+    return {
+      button:
+        "border-amber-200 bg-amber-50/90 text-amber-800 hover:border-amber-300 hover:bg-amber-100 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200 dark:hover:border-amber-500/40 dark:hover:bg-amber-500/15",
+      icon: "text-amber-600 dark:text-amber-300",
+    };
+  }
+
+  return {
+    button:
+      "border-blue-200 bg-blue-50/90 text-blue-700 hover:border-blue-300 hover:bg-blue-100 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-200 dark:hover:border-blue-500/40 dark:hover:bg-blue-500/15",
+    icon: "text-blue-600 dark:text-blue-300",
+  };
+}
+---
+
+{
+  links.length > 0 && (
+    <div class="not-prose flex flex-wrap justify-center gap-3">
+      {links.map((link) => {
+        const tone = getTone(link);
+
+        return (
+          <a
+            href={link.url}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={link.name}
+            class:list={[
+              "group inline-flex items-center gap-2.5 rounded-full border px-4 py-2 text-sm font-medium shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md",
+              tone.button,
+            ]}
+          >
+            {link.icon && (
+              <Icon
+                name={link.icon}
+                class:list={[
+                  "h-4 w-4 shrink-0 transition duration-200",
+                  tone.icon,
+                ]}
+              />
+            )}
+            <span>{link.name}</span>
+          </a>
+        );
+      })}
+    </div>
+  )
+}

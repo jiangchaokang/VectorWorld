@@ -1,0 +1,176 @@
+<div
+  data-media-lightbox-root
+  class="pointer-events-none fixed inset-0 z-50 hidden opacity-0 transition duration-200"
+  role="dialog"
+  aria-modal="true"
+  aria-hidden="true"
+  aria-label="Expanded media preview"
+>
+  <button
+    type="button"
+    data-media-lightbox-backdrop
+    aria-label="Close expanded preview"
+    class="absolute inset-0 border-0 bg-zinc-950/80 p-0 backdrop-blur-sm"
+  ></button>
+
+  <div class="absolute inset-0 flex items-center justify-center p-4 md:p-8">
+    <div class="relative w-full max-w-7xl">
+      <button
+        type="button"
+        data-media-lightbox-close
+        aria-label="Close expanded preview"
+        class="absolute right-3 top-3 z-10 rounded-full border border-white/15 bg-zinc-950/90 px-3 py-2 text-sm font-medium text-white transition hover:bg-zinc-900"
+      >
+        Close
+      </button>
+
+      <button
+        type="button"
+        data-media-lightbox-dismiss
+        class="block w-full cursor-zoom-out appearance-none border-0 bg-transparent p-0 text-left"
+      >
+        <div class="overflow-hidden rounded-3xl border border-white/10 bg-zinc-950/92 shadow-2xl">
+          <div class="flex items-center justify-center p-3 md:p-5">
+            <img
+              data-media-lightbox-image
+              src=""
+              alt=""
+              class="block max-w-full rounded-2xl object-contain"
+              style="max-height: min(80vh, 64rem);"
+            />
+          </div>
+        </div>
+      </button>
+
+      <div class="mt-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <p
+          data-media-lightbox-caption
+          class="max-w-4xl text-sm leading-6 text-zinc-200"
+        ></p>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <a
+            data-media-lightbox-original
+            href="#"
+            target="_blank"
+            rel="noreferrer"
+            class="hidden rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10"
+          >
+            Open original
+          </a>
+
+          <span class="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-medium text-zinc-300">
+            Click image again / Esc to close
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script is:inline>
+  (() => {
+    const root = document.querySelector("[data-media-lightbox-root]");
+    if (!(root instanceof HTMLElement)) return;
+    if (root.dataset.ready === "true") return;
+    root.dataset.ready = "true";
+
+    const image = root.querySelector("[data-media-lightbox-image]");
+    const caption = root.querySelector("[data-media-lightbox-caption]");
+    const originalLink = root.querySelector("[data-media-lightbox-original]");
+    const closeButton = root.querySelector("[data-media-lightbox-close]");
+
+    if (!(image instanceof HTMLImageElement)) return;
+    if (!(caption instanceof HTMLElement)) return;
+    if (!(originalLink instanceof HTMLAnchorElement)) return;
+    if (!(closeButton instanceof HTMLButtonElement)) return;
+
+    let isOpen = false;
+    let hideTimer = 0;
+    let lastTrigger = null;
+
+    const open = (trigger) => {
+      const src = trigger.getAttribute("data-lightbox-src");
+      if (!src) return;
+
+      lastTrigger = trigger;
+      image.src = src;
+      image.alt = trigger.getAttribute("data-lightbox-alt") ?? "";
+      caption.textContent =
+        trigger.getAttribute("data-lightbox-caption") ??
+        trigger.getAttribute("data-lightbox-alt") ??
+        "";
+
+      const original = trigger.getAttribute("data-lightbox-original");
+      if (original) {
+        originalLink.href = original;
+        originalLink.classList.remove("hidden");
+      } else {
+        originalLink.href = "#";
+        originalLink.classList.add("hidden");
+      }
+
+      window.clearTimeout(hideTimer);
+      root.classList.remove("hidden");
+      root.setAttribute("aria-hidden", "false");
+      document.documentElement.style.overflow = "hidden";
+
+      requestAnimationFrame(() => {
+        root.classList.remove("pointer-events-none", "opacity-0");
+      });
+
+      closeButton.focus();
+      isOpen = true;
+    };
+
+    const close = () => {
+      if (!isOpen) return;
+
+      root.classList.add("pointer-events-none", "opacity-0");
+      root.setAttribute("aria-hidden", "true");
+      document.documentElement.style.removeProperty("overflow");
+
+      hideTimer = window.setTimeout(() => {
+        root.classList.add("hidden");
+        image.removeAttribute("src");
+        image.removeAttribute("alt");
+        caption.textContent = "";
+      }, 200);
+
+      if (lastTrigger instanceof HTMLElement) {
+        lastTrigger.focus();
+      }
+
+      isOpen = false;
+    };
+
+    document.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+
+      const trigger = target.closest("[data-lightbox-trigger]");
+      if (trigger instanceof HTMLElement) {
+        event.preventDefault();
+        open(trigger);
+        return;
+      }
+
+      if (!isOpen) return;
+
+      if (
+        target.closest("[data-media-lightbox-backdrop]") ||
+        target.closest("[data-media-lightbox-close]") ||
+        target.closest("[data-media-lightbox-dismiss]")
+      ) {
+        event.preventDefault();
+        close();
+      }
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        close();
+      }
+    });
+  })();
+</script>
