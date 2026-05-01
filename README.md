@@ -37,7 +37,7 @@
 
 <p align="center">
   <a href="https://jiangchaokang.github.io/VectorWorld/">
-    <img src="project-page/src/assets/paper_material/Explanation_paper.mp4" alt="VectorWorld Demo" width="100%"/>
+    <img src="assets/mp4/VectorWorld.gif " alt="VectorWorld Demo" width="100%"/>
   </a>
 </p>
 
