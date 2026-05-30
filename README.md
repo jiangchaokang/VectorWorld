@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/img/VectorWorld-icon.png" alt="VectorWorld" width="100%"/>
+  <img src="assets/img/icml2026-spotlight.svg" alt="ICML 2026 Spotlight" width="600"/>
 </p>
 
 <h1 align="center">
@@ -20,6 +20,7 @@
 </p>
 
 <p align="center">
+  <img src="https://img.shields.io/badge/ICML%202026-Spotlight-B8860B?style=flat-square" alt="ICML 2026 Spotlight"/>
   <a href="https://jiangchaokang.github.io/VectorWorld/">
     <img src="https://img.shields.io/badge/Project-Page-2D7FF9?style=flat-square&logo=googlechrome&logoColor=white" alt="Project Page"/>
   </a>
@@ -37,7 +38,7 @@
 
 <p align="center">
   <a href="https://jiangchaokang.github.io/VectorWorld/">
-    <img src="assets/mp4/VectorWorld.gif " alt="VectorWorld Demo" width="100%"/>
+    <img src="assets/mp4/VectorWorld.gif" alt="VectorWorld Demo" width="100%"/>
   </a>
 </p>
 
@@ -148,7 +149,7 @@ Please refer to the arXiv paper for the complete experimental setup and evaluati
 
 **VectorWorld: Efficient Streaming World Model via Diffusion Flow on Vector Graphs**  
 Chaokang Jiang, Desen Zhou, Jiuming Liu, Kevin Li Sun  
-arXiv:2603.17652
+ICML 2026 (Spotlight) · arXiv:2603.17652
 
 <p align="center">
   <a href="https://arxiv.org/abs/2603.17652">
@@ -208,14 +209,13 @@ We especially acknowledge the broader research ecosystem around autonomous-drivi
 If you find VectorWorld useful, please consider citing:
 
 <pre>
-@misc{jiang2026vectorworldefficientstreamingworld,
-  title={VectorWorld: Efficient Streaming World Model via Diffusion Flow on Vector Graphs},
-  author={Chaokang Jiang and Desen Zhou and Jiuming Liu and Kevin Li Sun},
-  year={2026},
-  eprint={2603.17652},
-  archivePrefix={arXiv},
-  primaryClass={cs.RO},
-  url={https://arxiv.org/abs/2603.17652},
+@inproceedings{jiang2026vectorworld,
+  title     = {VectorWorld: Efficient Streaming World Model via Diffusion Flow on Vector Graphs},
+  author    = {Jiang, Chaokang and Zhou, Desen and Liu, Jiuming and Sun, Kevin Li},
+  booktitle = {Proceedings of the 43rd International Conference on Machine Learning (ICML)},
+  year      = {2026},
+  note      = {Spotlight},
+  url       = {https://arxiv.org/abs/2603.17652},
 }
 </pre>
 
