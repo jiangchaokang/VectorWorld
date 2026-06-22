@@ -27,6 +27,7 @@ const blockId = `bibtex-${Math.random().toString(36).slice(2, 10)}`;
       type="button"
       data-copy-target={blockId}
       class="vw-button-secondary"
+      aria-live="polite"
     >
       Copy BibTeX
     </button>
@@ -34,7 +35,7 @@ const blockId = `bibtex-${Math.random().toString(36).slice(2, 10)}`;
 
   <pre
     id={blockId}
-    class="m-0 overflow-x-auto bg-zinc-50/80 p-5 text-sm leading-7 text-zinc-800 dark:bg-zinc-950/80 dark:text-zinc-200"
+    class="m-0 overflow-x-auto bg-surface-2 p-5 text-sm leading-7 text-ink-1"
   ><code>{code}</code></pre>
 </div>
 
@@ -60,14 +61,16 @@ const blockId = `bibtex-${Math.random().toString(36).slice(2, 10)}`;
 
             try {
               await navigator.clipboard.writeText(text);
-              button.textContent = "Copied";
+              button.textContent = "✓ Copied";
+              button.dataset.copied = "true";
             } catch {
               button.textContent = "Copy failed";
             }
 
             window.setTimeout(() => {
               button.textContent = label;
-            }, 1400);
+              delete button.dataset.copied;
+            }, 1500);
           });
         });
     };

@@ -616,7 +616,7 @@ function getPalette(dark: boolean): ThreePalette {
         gridLine: 0x2a2a30,
         roadSurface: 0x3a3a42,
         laneCenter: 0x808090,
-        route: 0x38bdf8,
+        route: 0x22d3ee,
         tileFill: 0x3b82f6,
         tileOpacity: 0.08,
         connection: 0x22c55e,
@@ -624,8 +624,8 @@ function getPalette(dark: boolean): ThreePalette {
         vehicle: 0xc4c4cc,
         pedestrian: 0x4ade80,
         cyclist: 0xfacc15,
-        trail: 0x38bdf8,
-        highlight: 0x60a5fa,
+        trail: 0x22d3ee,
+        highlight: 0x67e8f9,
         headingIndicator: 0xfafafa,
       }
     : {
@@ -634,7 +634,7 @@ function getPalette(dark: boolean): ThreePalette {
         gridLine: 0xcccccc,
         roadSurface: 0x6b7280,
         laneCenter: 0xffffff,
-        route: 0x0284c7,
+        route: 0x0891b2,
         tileFill: 0x3b82f6,
         tileOpacity: 0.1,
         connection: 0x22c55e,
@@ -642,8 +642,8 @@ function getPalette(dark: boolean): ThreePalette {
         vehicle: 0x475569,
         pedestrian: 0x16a34a,
         cyclist: 0xca8a04,
-        trail: 0x0284c7,
-        highlight: 0x2563eb,
+        trail: 0x0891b2,
+        highlight: 0x0e7490,
         headingIndicator: 0x1e293b,
       };
 }
@@ -1634,13 +1634,13 @@ export default function VectorSceneViewerClient({ indexUrl }: Props) {
   }, [parsedScene]);
 
   const chip =
-    "rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300";
+    "rounded-full bg-surface-2 px-3 py-1 text-xs font-medium text-ink-2";
   const btnSec =
-    "rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800";
+    "rounded-full border border-hairline-strong px-4 py-2 text-sm font-medium text-ink-2 transition hover:border-[color:var(--vw-accent-line)] hover:text-ink-1 active:scale-[0.98]";
   const btnPri =
-    "rounded-full bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white";
+    "rounded-full bg-[color:var(--vw-text-1)] px-4 py-2 text-sm font-medium text-[color:var(--vw-bg)] transition hover:opacity-90 active:scale-[0.98]";
   const btnBlue =
-    "rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-500 dark:hover:bg-blue-400";
+    "rounded-full bg-brand px-4 py-2 text-sm font-medium text-brand-contrast transition hover:bg-[color:var(--vw-accent-strong)] disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.98]";
 
   const containerH = "clamp(30rem, 74vh, 46rem)";
 
@@ -1655,17 +1655,17 @@ export default function VectorSceneViewerClient({ indexUrl }: Props) {
 
   return (
     <div className="space-y-5">
-      <section className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      <section className="rounded-3xl border border-hairline bg-surface-1 p-5">
         <div className="grid gap-6 xl:grid-cols-2">
           <div className="space-y-4">
             <label className="block">
-              <span className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              <span className="mb-2 block text-sm font-medium text-ink-2">
                 Scene
               </span>
               <select
                 value={selectedId}
                 onChange={(e) => setSelectedId(e.target.value)}
-                className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                className="w-full rounded-xl border border-hairline bg-surface-1 px-3 py-2 text-sm text-ink-1"
               >
                 {indexData?.scenes.map((s) => (
                   <option key={s.id} value={s.id}>
@@ -1707,14 +1707,14 @@ export default function VectorSceneViewerClient({ indexUrl }: Props) {
               </button>
             </div>
 
-            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950">
-              <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+            <div className="rounded-2xl border border-hairline bg-surface-2 p-4">
+              <h3 className="text-sm font-semibold text-ink-1">
                 3D Inspection
               </h3>
-              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+              <p className="mt-1 text-xs text-ink-3">
                 Orbit, pan, and zoom the exported vector scene in 3D
               </p>
-              <ul className="mt-3 space-y-1.5 text-sm text-zinc-600 dark:text-zinc-400">
+              <ul className="mt-3 space-y-1.5 text-sm text-ink-2">
                 <li>🖱️ Left drag → orbit</li>
                 <li>🖱️ Right drag → pan</li>
                 <li>🖱️ Scroll → zoom (no page scroll)</li>
@@ -1724,11 +1724,11 @@ export default function VectorSceneViewerClient({ indexUrl }: Props) {
           </div>
 
           <div className="space-y-4">
-            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950">
-              <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+            <div className="rounded-2xl border border-hairline bg-surface-2 p-4">
+              <h3 className="text-sm font-semibold text-ink-1">
                 Layers
               </h3>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="mt-4 grid gap-2 sm:grid-cols-2">
                 {(
                   [
                     ["Route", showRoute, setShowRoute],
@@ -1743,29 +1743,40 @@ export default function VectorSceneViewerClient({ indexUrl }: Props) {
                       },
                     ],
                   ] as const
-                ).map(([label, val, setter]) => (
-                  <label
-                    key={label}
-                    className="inline-flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={val as boolean}
-                      onChange={(e) =>
-                        (setter as (v: boolean) => void)(e.target.checked)
+                ).map(([label, val, setter]) => {
+                  const on = val as boolean;
+                  return (
+                    <button
+                      key={label}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() =>
+                        (setter as (v: boolean) => void)(!on)
                       }
-                      className="rounded border-zinc-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    {label}
-                  </label>
-                ))}
+                      className={`inline-flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition active:scale-[0.98] ${
+                        on
+                          ? "border-[color:var(--vw-accent-line)] bg-brand-soft text-brand"
+                          : "border-hairline bg-surface-1 text-ink-2 hover:border-[color:var(--vw-accent-line)] hover:text-ink-1"
+                      }`}
+                    >
+                      <span>{label}</span>
+                      <span
+                        className={`h-1.5 w-1.5 rotate-45 ${
+                          on
+                            ? "bg-[color:var(--vw-accent)]"
+                            : "bg-[color:var(--vw-hairline-strong)]"
+                        }`}
+                      />
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950">
-              <div className="mb-2 flex items-center justify-between text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            <div className="rounded-2xl border border-hairline bg-surface-2 p-4">
+              <div className="mb-2 flex items-center justify-between text-sm font-medium text-ink-2">
                 <span>Motion trail progress</span>
-                <span>{Math.round(motionProgress * 100)}%</span>
+                <span className="font-mono text-ink-1">{Math.round(motionProgress * 100)}%</span>
               </div>
               <input
                 type="range"
@@ -1778,7 +1789,7 @@ export default function VectorSceneViewerClient({ indexUrl }: Props) {
                   setAnimateMotion(false);
                   setMotionProgress(Number(e.target.value) / 1000);
                 }}
-                className="w-full accent-blue-600"
+                className="w-full [accent-color:var(--vw-accent)]"
               />
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
@@ -1815,7 +1826,7 @@ export default function VectorSceneViewerClient({ indexUrl }: Props) {
             <span
               className={
                 selectedEntry.route_completed
-                  ? "rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700 dark:bg-green-500/10 dark:text-green-300"
+                  ? "rounded-full border border-[color:var(--vw-accent-line)] bg-brand-soft px-3 py-1 text-xs font-medium text-brand"
                   : chip
               }
             >
@@ -1829,7 +1840,7 @@ export default function VectorSceneViewerClient({ indexUrl }: Props) {
 
       <div
         ref={mountRef}
-        className="relative w-full select-none overflow-hidden rounded-3xl border border-zinc-200 bg-zinc-950 shadow-sm dark:border-zinc-800"
+        className="relative w-full select-none overflow-hidden rounded-3xl border border-hairline bg-[var(--vw-canvas)]"
         style={{ height: containerH }}
         onDoubleClick={(e) => {
           e.preventDefault();
@@ -1846,8 +1857,18 @@ export default function VectorSceneViewerClient({ indexUrl }: Props) {
         </div>
 
         {(loading || !sceneData) && !error && (
-          <div className="absolute inset-0 z-20 flex items-center justify-center bg-zinc-950/80 text-sm font-medium text-zinc-300 backdrop-blur">
-            Loading vector scene…
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 bg-[var(--vw-canvas)]/85 backdrop-blur">
+            <span className="relative flex h-10 w-10 items-center justify-center">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[color:var(--vw-accent)] opacity-30" />
+              <span className="relative h-3 w-3 rotate-45 bg-[color:var(--vw-accent)] shadow-[0_0_0_6px_var(--vw-accent-soft)]" />
+            </span>
+            <div className="w-48 space-y-2">
+              <div className="h-2.5 w-full rounded-full bg-white/10" />
+              <div className="h-2.5 w-2/3 rounded-full bg-white/10" />
+            </div>
+            <span className="font-mono text-xs uppercase tracking-wider text-zinc-300">
+              Loading vector scene…
+            </span>
           </div>
         )}
         {error && (
@@ -1889,12 +1910,12 @@ export default function VectorSceneViewerClient({ indexUrl }: Props) {
         )}
       </div>
 
-      <div className="flex flex-wrap gap-4 text-xs text-zinc-600 dark:text-zinc-400">
+      <div className="flex flex-wrap gap-4 text-xs text-ink-2">
         {(
           [
             ["bg-zinc-400", "Lane band"],
-            ["bg-sky-500", "Route"],
-            ["bg-sky-400", "Motion trail"],
+            ["bg-[color:var(--vw-accent)]", "Route"],
+            ["bg-[color:var(--vw-accent-strong)]", "Motion trail"],
             ["bg-orange-500", "Ego"],
             ["bg-slate-500", "Vehicle"],
             ["bg-green-500", "Pedestrian"],
@@ -1908,8 +1929,8 @@ export default function VectorSceneViewerClient({ indexUrl }: Props) {
         ))}
       </div>
 
-      <div className="rounded-3xl border border-zinc-200 bg-zinc-50 p-4 text-sm leading-6 text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400">
-        <strong className="text-zinc-900 dark:text-zinc-100">Note.</strong>{" "}
+      <div className="rounded-3xl border border-hairline bg-surface-2 p-4 text-sm leading-6 text-ink-2">
+        <strong className="text-ink-1">Note.</strong>{" "}
         Exported scene inspection only: one scene snapshot plus a qualitative{" "}
         <code>agent_motion</code> trail, not a full per-step replay. Drag to
         orbit, scroll to zoom, right-drag to pan.

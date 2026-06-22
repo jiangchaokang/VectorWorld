@@ -4,6 +4,7 @@ import Links from "../Links.astro";
 import Notes from "../Notes.astro";
 import ThemeToggle from "../ThemeToggle.astro";
 import VectorWorldWordmark from "./VectorWorldWordmark.astro";
+import HeroVectorField from "./HeroVectorField.astro";
 import type { Author, Link, Note } from "../../types/types";
 
 interface Props {
@@ -34,15 +35,23 @@ const showBrandIcon = brand.trim().toLowerCase() === "vectorworld";
 ---
 
 <header class="mx-auto mb-12 px-6 md:mb-16" style="max-width: 92rem;">
-  <div class="vw-hero-shell px-6 py-6 md:px-10 md:py-10">
-    <div class="mb-6 flex items-center justify-between gap-4">
-      <span class="vw-eyebrow">Project page</span>
+  <div class="vw-hero-shell px-6 py-8 md:px-12 md:py-12">
+    <HeroVectorField />
+
+    <div class="mb-8 flex items-center justify-between gap-4">
+      <span class="vw-eyebrow">Streaming World Model</span>
       <ThemeToggle />
     </div>
 
     <div class="mx-auto max-w-5xl text-center">
+      <div class="not-prose mb-6 flex justify-center" data-reveal>
+        <span class="vw-eyebrow vw-eyebrow--plain text-[0.7rem] text-ink-3">
+          ICML 2026 · Spotlight
+        </span>
+      </div>
+
       {brand && (
-        <div class="vw-hero-brand-wrap">
+        <div class="vw-hero-brand-wrap" data-reveal data-reveal-delay="40">
           <span class="vw-hero-brand">
             {showBrandIcon ? (
               <VectorWorldWordmark title={brand} iconSize="0.92em" />
@@ -53,22 +62,34 @@ const showBrandIcon = brand.trim().toLowerCase() === "vectorworld";
         </div>
       )}
 
-      <h1 class={brand ? "vw-hero-subtitle" : "vw-hero-title"}>
+      <h1
+        class={brand ? "vw-hero-subtitle" : "vw-hero-title"}
+        data-reveal
+        data-reveal-delay="80"
+      >
         {brand && <span class="sr-only">{brand}: </span>}
         {subtitle}
       </h1>
 
       {description && (
-        <p class="not-prose mx-auto mt-5 max-w-4xl vw-lead">
+        <p
+          class="not-prose vw-lead mx-auto mt-6 max-w-3xl"
+          data-reveal
+          data-reveal-delay="120"
+        >
           {description}
         </p>
       )}
 
-      <div class="not-prose mt-7 flex flex-col items-center gap-4">
+      <div
+        class="not-prose mt-8 flex flex-col items-center gap-5"
+        data-reveal
+        data-reveal-delay="160"
+      >
         <Authors authors={authors} />
 
         <div class="flex flex-wrap items-center justify-center gap-3">
-          {conference && <div class="vw-eyebrow">{conference}</div>}
+          {conference && <span class="vw-eyebrow">{conference}</span>}
           {notes && notes.length > 0 && <Notes notes={notes} />}
         </div>
 
@@ -77,10 +98,16 @@ const showBrandIcon = brand.trim().toLowerCase() === "vectorworld";
     </div>
 
     {heroHighlights.length > 0 && (
-      <div class="not-prose mx-auto mt-8 grid max-w-6xl gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <div class="not-prose mx-auto mt-10 grid max-w-6xl gap-3 md:grid-cols-2 xl:grid-cols-4">
         {heroHighlights.map((item, index) => (
-          <article class="vw-hero-highlight-card">
-            <div class="vw-hero-highlight-index">0{index + 1}</div>
+          <article
+            class="vw-hero-highlight-card"
+            data-reveal
+            data-reveal-delay={String(180 + index * 60)}
+          >
+            <div class="vw-hero-highlight-index">
+              {String(index + 1).padStart(2, "0")}
+            </div>
             <p class="vw-hero-highlight-copy">{item}</p>
           </article>
         ))}

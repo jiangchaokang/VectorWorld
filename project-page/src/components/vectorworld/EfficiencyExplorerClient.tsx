@@ -35,6 +35,8 @@ type MethodCardProps = {
   src: string;
   metrics?: VideoMetrics;
   currentTime?: number;
+  isSelected: boolean;
+  onSelect: () => void;
   registerVideo: (node: HTMLVideoElement | null) => void;
   onLoadedMetadata: (video: HTMLVideoElement) => void;
 };
@@ -42,14 +44,36 @@ type MethodCardProps = {
 const METHOD_ORDER: MethodKey[] = ["scenedream", "fewstep", "onestep"];
 const PLAYBACK_FPS = 24;
 
-const activePillButtonClass =
-  "rounded-full bg-zinc-900 px-4 py-2 text-sm font-medium text-white dark:bg-zinc-100 dark:text-zinc-900";
+const SHORT_LABEL: Record<MethodKey, string> = {
+  scenedream: "Multi-step",
+  fewstep: "Few-step",
+  onestep: "One-step",
+};
 
-const inactivePillButtonClass =
-  "rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800";
+// Latency anchored to the one reported number (5.6 ms one-step). Few-step and
+// multi-step are representative, derived from solver-step count.
+const LATENCY: Record<MethodKey, { ms: number; label: string; steps: string }> = {
+  scenedream: { ms: 150, label: "≫ 100 ms", steps: "many solver steps" },
+  fewstep: { ms: 22, label: "≈ 17–28 ms", steps: "3–5 steps" },
+  onestep: { ms: 5.6, label: "5.6 ms", steps: "1 step" },
+};
 
-const primaryButtonClass =
-  "rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-400";
+const AXIS_MIN = 3.5;
+const AXIS_MAX = 260;
+const BUDGET_MS = 10;
+
+function axisPct(ms: number) {
+  const t =
+    (Math.log(ms) - Math.log(AXIS_MIN)) /
+    (Math.log(AXIS_MAX) - Math.log(AXIS_MIN));
+  return Math.max(0, Math.min(1, t)) * 100;
+}
+
+const selectedPillClass =
+  "rounded-full border border-[color:var(--vw-accent-line)] bg-brand-soft px-4 py-2 text-sm font-medium text-brand transition";
+
+const inactivePillClass =
+  "rounded-full border border-hairline-strong px-4 py-2 text-sm font-medium text-ink-2 transition hover:border-[color:var(--vw-accent-line)] hover:text-ink-1 active:scale-[0.98]";
 
 function clamp01(value: number) {
   return Math.max(0, Math.min(1, value));
@@ -64,26 +88,92 @@ function formatTime(value?: number) {
   return `${value.toFixed(2)} s`;
 }
 
-function toneBadgeClasses(accent: AccentTone) {
-  switch (accent) {
-    case "blue":
-      return "bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300";
-    case "violet":
-      return "bg-violet-100 text-violet-700 dark:bg-violet-500/10 dark:text-violet-300";
-    default:
-      return "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300";
-  }
-}
+function LatencyAxis({
+  methods,
+  selected,
+  onSelect,
+}: {
+  methods: Record<MethodKey, MethodMeta>;
+  selected: MethodKey;
+  onSelect: (key: MethodKey) => void;
+}) {
+  const budgetPct = axisPct(BUDGET_MS);
 
-function toneCardClasses(accent: AccentTone) {
-  switch (accent) {
-    case "blue":
-      return "border-blue-200 dark:border-blue-900";
-    case "violet":
-      return "border-violet-200 dark:border-violet-900";
-    default:
-      return "border-zinc-200 dark:border-zinc-800";
-  }
+  return (
+    <section className="rounded-3xl border border-hairline bg-surface-1 p-5 md:p-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <span className="vw-eyebrow">Latency axis</span>
+          <h3 className="mt-2 text-sm font-semibold text-ink-1">
+            Pick an operating point
+          </h3>
+        </div>
+        <span className="rounded-full bg-surface-2 px-3 py-1 font-mono text-[0.7rem] font-medium text-ink-2">
+          log scale · per 64 m tile
+        </span>
+      </div>
+
+      <div className="relative mx-2 mt-12 mb-12 h-px bg-[color:var(--vw-hairline-strong)] md:mx-4">
+        <div
+          className="absolute inset-y-[-16px] left-0 rounded-l-xl border-r border-dashed border-[color:var(--vw-accent-line)] bg-brand-soft"
+          style={{ width: `${budgetPct}%` }}
+          aria-hidden="true"
+        />
+        <span
+          className="absolute -top-9 whitespace-nowrap font-mono text-[0.62rem] font-medium uppercase tracking-wider text-brand"
+          style={{ left: `${budgetPct}%`, transform: "translateX(-50%)" }}
+        >
+          ◂ streaming budget
+        </span>
+
+        {METHOD_ORDER.map((key) => {
+          const lat = LATENCY[key];
+          const pct = axisPct(lat.ms);
+          const isSel = selected === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => onSelect(key)}
+              className="group absolute top-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center"
+              style={{ left: `${pct}%` }}
+              aria-pressed={isSel}
+              aria-label={`${methods[key].label}, ${lat.label}, ${lat.steps}`}
+            >
+              <span
+                className={`absolute -top-9 whitespace-nowrap text-[0.72rem] font-medium transition ${
+                  isSel ? "text-ink-1" : "text-ink-2 group-hover:text-ink-1"
+                }`}
+              >
+                {SHORT_LABEL[key]}
+              </span>
+              <span
+                className={`h-3.5 w-3.5 rounded-full border-2 transition ${
+                  isSel
+                    ? "border-[color:var(--vw-accent)] bg-[color:var(--vw-accent)] shadow-[0_0_0_5px_var(--vw-accent-soft)]"
+                    : "border-[color:var(--vw-hairline-strong)] bg-[color:var(--vw-surface-1)] group-hover:border-[color:var(--vw-accent-line)]"
+                }`}
+              />
+              <span
+                className={`absolute top-6 whitespace-nowrap font-mono text-[0.7rem] transition ${
+                  isSel ? "text-brand" : "text-ink-3"
+                }`}
+              >
+                {lat.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      <p className="mt-2 text-xs leading-5 text-ink-3">
+        Latency anchored to the reported{" "}
+        <span className="font-mono text-ink-2">5.6 ms</span> one-step cost;
+        few-step scales with 3–5 solver steps, and the multi-step baseline needs
+        many more. Only the one-step point sits inside the streaming budget.
+      </p>
+    </section>
+  );
 }
 
 function MethodCard({
@@ -91,6 +181,8 @@ function MethodCard({
   src,
   metrics,
   currentTime,
+  isSelected,
+  onSelect,
   registerVideo,
   onLoadedMetadata,
 }: MethodCardProps) {
@@ -99,37 +191,47 @@ function MethodCard({
 
   return (
     <article
-      className={`rounded-3xl border bg-white p-4 shadow-sm dark:bg-zinc-900 ${toneCardClasses(method.accent)}`}
+      className={`vw-card overflow-hidden p-4 transition ${
+        isSelected
+          ? "border-[color:var(--vw-accent-line)] shadow-[0_0_0_1px_var(--vw-accent-line)]"
+          : ""
+      }`}
+      aria-current={isSelected ? "true" : undefined}
     >
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="space-y-1.5">
-          <div
-            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${toneBadgeClasses(method.accent)}`}
+          <button
+            type="button"
+            onClick={onSelect}
+            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold transition ${
+              isSelected
+                ? "bg-brand text-brand-contrast"
+                : "bg-surface-2 text-ink-2 hover:text-ink-1"
+            }`}
+            aria-pressed={isSelected}
           >
             {method.badge}
-          </div>
+          </button>
 
-          <h3 className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+          <h3 className="text-lg font-semibold tracking-tight text-ink-1">
             {method.label}
           </h3>
 
-          <p className="text-sm leading-6 text-zinc-600 dark:text-zinc-400">
-            {method.note}
-          </p>
+          <p className="text-sm leading-6 text-ink-2">{method.note}</p>
         </div>
 
         <a
           href={src}
           target="_blank"
           rel="noreferrer"
-          className="rounded-full border border-zinc-300 px-3 py-1 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          className="vw-pill !px-3 !py-1 !text-xs"
         >
           Open
         </a>
       </div>
 
       <div
-        className="overflow-hidden rounded-2xl border border-zinc-200 bg-black shadow-inner dark:border-zinc-800"
+        className="overflow-hidden rounded-2xl border border-hairline bg-[var(--vw-canvas)]"
         style={{ aspectRatio }}
       >
         <video
@@ -144,11 +246,11 @@ function MethodCard({
         />
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-2 text-xs text-zinc-600 dark:text-zinc-400">
-        <span className="rounded-full bg-zinc-100 px-3 py-1 dark:bg-zinc-950">
+      <div className="mt-3 flex flex-wrap gap-2 font-mono text-xs text-ink-3">
+        <span className="rounded-full bg-surface-2 px-3 py-1">
           clip {formatTime(metrics?.duration)}
         </span>
-        <span className="rounded-full bg-zinc-100 px-3 py-1 dark:bg-zinc-950">
+        <span className="rounded-full bg-surface-2 px-3 py-1">
           current {formatTime(currentTime)}
         </span>
       </div>
@@ -162,6 +264,7 @@ export default function EfficiencyExplorerClient({ methods, cases }: Props) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [metrics, setMetrics] = useState<MetricsMap>({});
+  const [selectedMethod, setSelectedMethod] = useState<MethodKey>("onestep");
 
   const progressRef = useRef(progress);
   const intervalRef = useRef<number | null>(null);
@@ -240,14 +343,16 @@ export default function EfficiencyExplorerClient({ methods, cases }: Props) {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      <LatencyAxis methods={methods} selected={selectedMethod} onSelect={setSelectedMethod} />
+
+      <section className="rounded-3xl border border-hairline bg-surface-1 p-5">
         <div className="space-y-4">
           <div>
-            <p className="mb-3 text-sm font-medium text-zinc-700 dark:text-zinc-300">Representative clips</p>
+            <p className="mb-3 text-sm font-medium text-ink-2">Representative clips</p>
             <div className="flex flex-wrap gap-2">
               {cases.map((item, idx) => (
                 <button key={item.key} type="button" onClick={() => setCaseIndex(idx)}
-                  className={idx === caseIndex ? activePillButtonClass : inactivePillButtonClass}>
+                  className={idx === caseIndex ? selectedPillClass : inactivePillClass}>
                   {item.label}
                 </button>
               ))}
@@ -256,28 +361,28 @@ export default function EfficiencyExplorerClient({ methods, cases }: Props) {
 
           {/* ===== prev / next navigation ===== */}
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={goPrev} className={inactivePillButtonClass}>← Previous</button>
-            <button type="button" onClick={goNext} className={activePillButtonClass}>Next →</button>
-            <span className="rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-300">
+            <button type="button" onClick={goPrev} className={inactivePillClass}>← Previous</button>
+            <button type="button" onClick={goNext} className={inactivePillClass}>Next →</button>
+            <span className="rounded-full border border-hairline-strong bg-surface-1 px-4 py-2 text-sm font-medium text-ink-2">
               {selectedCase.label} · {caseIndex + 1} / {cases.length}
             </span>
           </div>
 
-          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950">
+          <div className="rounded-2xl border border-hairline bg-surface-2 p-4">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{selectedCase.label}</p>
-                  <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300">matched rollout progress</span>
+                  <p className="text-sm font-semibold text-ink-1">{selectedCase.label}</p>
+                  <span className="rounded-full bg-surface-1 px-3 py-1 text-xs font-medium text-ink-2">matched rollout progress</span>
                 </div>
-                <p className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">{selectedCase.description}</p>
+                <p className="mt-2 text-sm leading-6 text-ink-2">{selectedCase.description}</p>
               </div>
               <div>
-                <p className="mb-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">Playback speed</p>
+                <p className="mb-2 text-sm font-medium text-ink-2">Playback speed</p>
                 <div className="flex flex-wrap gap-2">
                   {[0.75, 1, 1.5].map((value) => (
                     <button key={value} type="button" onClick={() => setPlaybackRate(value)}
-                      className={playbackRate === value ? activePillButtonClass : inactivePillButtonClass}>
+                      className={playbackRate === value ? selectedPillClass : inactivePillClass}>
                       {value.toFixed(2).replace(".00", "")}×
                     </button>
                   ))}
@@ -286,21 +391,22 @@ export default function EfficiencyExplorerClient({ methods, cases }: Props) {
             </div>
 
             <div className="mt-4">
-              <div className="mb-2 flex items-center justify-between text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              <div className="mb-2 flex items-center justify-between text-sm font-medium text-ink-2">
                 <span>Shared progress</span>
-                <span>{Math.round(progress * 100)}%</span>
+                <span className="font-mono text-ink-1">{Math.round(progress * 100)}%</span>
               </div>
               <input type="range" min={0} max={1000} step={1} value={Math.round(progress * 1000)}
-                onChange={(e) => handleSliderChange(Number(e.target.value) / 1000)} className="w-full accent-blue-600" />
+                onChange={(e) => handleSliderChange(Number(e.target.value) / 1000)}
+                className="w-full [accent-color:var(--vw-accent)]" />
               <div className="mt-4 flex flex-wrap gap-2">
-                <button type="button" onClick={togglePlayback} className={primaryButtonClass}>{isPlaying ? "Pause" : "Play"}</button>
-                <button type="button" onClick={() => jumpBy(-0.05)} className={inactivePillButtonClass}>−5%</button>
-                <button type="button" onClick={() => jumpBy(0.05)} className={inactivePillButtonClass}>+5%</button>
-                <button type="button" onClick={resetProgress} className={inactivePillButtonClass}>Reset</button>
+                <button type="button" onClick={togglePlayback} className="vw-button-primary">{isPlaying ? "Pause" : "Play"}</button>
+                <button type="button" onClick={() => jumpBy(-0.05)} className={inactivePillClass}>−5%</button>
+                <button type="button" onClick={() => jumpBy(0.05)} className={inactivePillClass}>+5%</button>
+                <button type="button" onClick={resetProgress} className={inactivePillClass}>Reset</button>
               </div>
-              <div className="mt-4 flex flex-wrap gap-2 text-xs text-zinc-600 dark:text-zinc-400">
-                <span className="rounded-full bg-white px-3 py-1 dark:bg-zinc-900">shared progress control</span>
-                <span className="rounded-full bg-white px-3 py-1 dark:bg-zinc-900">reference clip {formatTime(masterDuration)}</span>
+              <div className="mt-4 flex flex-wrap gap-2 font-mono text-xs text-ink-3">
+                <span className="rounded-full bg-surface-1 px-3 py-1">shared progress control</span>
+                <span className="rounded-full bg-surface-1 px-3 py-1">reference clip {formatTime(masterDuration)}</span>
               </div>
             </div>
           </div>
@@ -319,6 +425,8 @@ export default function EfficiencyExplorerClient({ methods, cases }: Props) {
                   src={src}
                   metrics={mMet}
                   currentTime={curTime}
+                  isSelected={selectedMethod === key}
+                  onSelect={() => setSelectedMethod(key)}
                   registerVideo={(node) => { videoRefs.current[key] = node; }}
                   onLoadedMetadata={(video) => {
                     const ar = video.videoWidth > 0 && video.videoHeight > 0 ? video.videoWidth / video.videoHeight : undefined;
@@ -339,35 +447,35 @@ export default function EfficiencyExplorerClient({ methods, cases }: Props) {
       </section>
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <div className="rounded-3xl border border-zinc-200 bg-zinc-50 p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-          <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Generator</p>
-          <p className="mt-2 text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">One-step MeanFlow + JVP</p>
-          <p className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">Solver-free masked completion for repeated rollout-time generation.</p>
+        <div className="rounded-3xl border border-hairline bg-surface-2 p-4">
+          <p className="vw-stat-label">Generator</p>
+          <p className="mt-2 text-lg font-semibold tracking-tight text-ink-1">One-step MeanFlow + JVP</p>
+          <p className="mt-2 text-sm leading-6 text-ink-2">Solver-free masked completion for repeated rollout-time generation.</p>
         </div>
-        <div className="rounded-3xl border border-zinc-200 bg-zinc-50 p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-          <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Deployment cost</p>
-          <p className="mt-2 text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">5.6 ms / 64 m × 64 m tile</p>
-          <p className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">The online operating point reported in the paper.</p>
+        <div className="rounded-3xl border border-hairline bg-surface-2 p-4">
+          <p className="vw-stat-label">Deployment cost</p>
+          <p className="mt-2 text-lg font-semibold tracking-tight text-ink-1"><span className="vw-accent-text">5.6 ms</span> / 64 m × 64 m tile</p>
+          <p className="mt-2 text-sm leading-6 text-ink-2">The online operating point reported in the paper.</p>
         </div>
-        <div className="rounded-3xl border border-zinc-200 bg-zinc-50 p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-          <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Step budget</p>
-          <p className="mt-2 text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">3–5 steps</p>
-          <p className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">Higher fidelity when a small offline budget.</p>
+        <div className="rounded-3xl border border-hairline bg-surface-2 p-4">
+          <p className="vw-stat-label">Step budget</p>
+          <p className="mt-2 text-lg font-semibold tracking-tight text-ink-1">3–5 steps</p>
+          <p className="mt-2 text-sm leading-6 text-ink-2">Higher fidelity when a small offline budget.</p>
         </div>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,0.86fr)]">
-        <section className="rounded-3xl border border-zinc-200 bg-zinc-50 p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-          <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">What to inspect</h3>
-          <ul className="mt-3 space-y-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+        <section className="rounded-3xl border border-hairline bg-surface-2 p-5">
+          <h3 className="text-sm font-semibold text-ink-1">What to inspect</h3>
+          <ul className="mt-3 space-y-2 text-sm leading-6 text-ink-2">
             <li>Lane continuity at the frontier.</li>
             <li>Route continuation under a tight step budget.</li>
             <li>Agent-map consistency during low-latency generation.</li>
           </ul>
         </section>
-        <section className="rounded-3xl border border-zinc-200 bg-zinc-50 p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-          <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Reading guide</h3>
-          <p className="mt-3 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+        <section className="rounded-3xl border border-hairline bg-surface-2 p-5">
+          <h3 className="text-sm font-semibold text-ink-1">Reading guide</h3>
+          <p className="mt-3 text-sm leading-6 text-ink-2">
             One-step MeanFlow is the deployment point. Few-step flow recovers fidelity when a small extra budget is allowed. The multi-step baseline remains visibly slower.
           </p>
         </section>

@@ -4,20 +4,22 @@ interface Props {
   title: string;
   subtitle?: string;
   center?: boolean;
+  index?: string;
 }
 
-const { eyebrow, title, subtitle, center = false } = Astro.props;
+const { eyebrow, title, subtitle, center = false, index } = Astro.props;
 ---
 
-<div class:list={["not-prose mb-10", center && "text-center"]}>
-  {eyebrow && (
-    <div class:list={["mb-4 flex", center && "justify-center"]}>
-      <span class="vw-eyebrow">{eyebrow}</span>
+<div class:list={["not-prose mb-10", center && "text-center"]} data-reveal>
+  {(eyebrow || index) && (
+    <div class:list={["mb-4 flex items-center gap-3", center && "justify-center"]}>
+      {index && <span class="vw-section-index">{index}</span>}
+      {eyebrow && <span class="vw-eyebrow">{eyebrow}</span>}
     </div>
   )}
 
   <div class:list={[center ? "mx-auto max-w-4xl" : "max-w-4xl"]}>
-    <h2 class="m-0 text-balance text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 md:text-3xl lg:text-4xl">
+    <h2 class="m-0 text-balance text-2xl font-semibold tracking-tight text-ink-1 md:text-3xl lg:text-4xl">
       {title}
     </h2>
 

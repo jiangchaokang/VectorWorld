@@ -1,0 +1,155 @@
+---
+/*
+  Quiet lane-agent vector graph for the hero backdrop.
+  Deliberately sparse and low-contrast: a signature, not a particle storm.
+  Respects prefers-reduced-motion (drift + parallax disabled).
+*/
+const uid = `hf-${Math.random().toString(36).slice(2, 8)}`;
+const fade = `${uid}-fade`;
+---
+
+<div class="vw-hero-field vw-hero-canvas" data-hero-field aria-hidden="true">
+  <svg
+    viewBox="0 0 1200 520"
+    preserveAspectRatio="xMidYMid slice"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <defs>
+      <radialGradient id={fade} cx="0.5" cy="0.32" r="0.75">
+        <stop offset="0" stop-color="white" stop-opacity="1" />
+        <stop offset="1" stop-color="white" stop-opacity="0" />
+      </radialGradient>
+      <mask id={`${uid}-mask`}>
+        <rect width="1200" height="520" fill={`url(#${fade})`} />
+      </mask>
+    </defs>
+
+    <g mask={`url(#${uid}-mask)`}>
+      <!-- lane polylines: convergent, road-like -->
+      <g class="vw-hf-lanes" stroke="currentColor">
+        <path d="M-40 150 C 240 120, 420 220, 700 210 S 1180 250, 1260 220" stroke-opacity="0.10" stroke-width="1.5" />
+        <path d="M-40 250 C 260 250, 430 300, 720 300 S 1180 330, 1260 320" stroke-opacity="0.12" stroke-width="1.5" />
+        <path d="M-40 360 C 240 380, 470 360, 760 380 S 1180 400, 1260 430" stroke-opacity="0.08" stroke-width="1.5" />
+        <path d="M120 -20 C 180 160, 360 280, 420 560" stroke-opacity="0.06" stroke-width="1.5" />
+        <path d="M880 -20 C 840 180, 700 300, 760 560" stroke-opacity="0.06" stroke-width="1.5" />
+      </g>
+
+      <!-- highlighted route -->
+      <path
+        class="vw-hf-route"
+        d="M-40 250 C 260 250, 430 300, 720 300 S 1180 330, 1260 320"
+        stroke="currentColor"
+        stroke-opacity="0.5"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-dasharray="2 12"
+      />
+
+      <!-- graph nodes -->
+      <g class="vw-hf-nodes" fill="currentColor">
+        <circle cx="240" cy="180" r="3" fill-opacity="0.5" />
+        <circle cx="700" cy="210" r="2.5" fill-opacity="0.35" />
+        <circle cx="430" cy="300" r="3.5" fill-opacity="0.7" />
+        <circle cx="720" cy="300" r="3" fill-opacity="0.55" />
+        <circle cx="980" cy="320" r="2.5" fill-opacity="0.4" />
+        <circle cx="470" cy="360" r="2.5" fill-opacity="0.35" />
+        <circle cx="180" cy="120" r="2" fill-opacity="0.3" />
+      </g>
+
+      <!-- ego node -->
+      <g class="vw-hf-ego">
+        <circle cx="430" cy="300" r="16" fill="currentColor" fill-opacity="0.08" />
+        <circle cx="430" cy="300" r="5" fill="currentColor" fill-opacity="0.85" />
+      </g>
+    </g>
+  </svg>
+</div>
+
+<style>
+  .vw-hero-field {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    color: var(--vw-accent);
+    will-change: transform;
+    transition: transform 0.6s var(--ease);
+  }
+
+  .vw-hero-field svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  .vw-hf-lanes {
+    animation: vw-hf-drift 18s var(--ease) infinite;
+  }
+
+  .vw-hf-nodes {
+    animation: vw-hf-drift 22s var(--ease) infinite reverse;
+  }
+
+  .vw-hf-ego circle:last-child {
+    animation: vw-pulse 4s var(--ease) infinite;
+  }
+
+  .vw-hf-route {
+    animation: vw-hf-stream 3.5s linear infinite;
+  }
+
+  @keyframes vw-hf-drift {
+    0%,
+    100% {
+      transform: translate3d(0, 0, 0);
+    }
+    50% {
+      transform: translate3d(0, -7px, 0);
+    }
+  }
+
+  @keyframes vw-hf-stream {
+    to {
+      stroke-dashoffset: -140;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .vw-hero-field {
+      transition: none;
+    }
+    .vw-hf-lanes,
+    .vw-hf-nodes,
+    .vw-hf-ego circle:last-child,
+    .vw-hf-route {
+      animation: none;
+    }
+  }
+</style>
+
+<script is:inline>
+  (() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const field = document.querySelector("[data-hero-field]");
+    if (!(field instanceof HTMLElement)) return;
+    const host = field.closest(".vw-hero-shell") ?? field.parentElement;
+    if (!(host instanceof HTMLElement)) return;
+
+    let raf = 0;
+    const onMove = (e) => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        const r = host.getBoundingClientRect();
+        const dx = ((e.clientX - r.left) / r.width - 0.5) * 2;
+        const dy = ((e.clientY - r.top) / r.height - 0.5) * 2;
+        field.style.transform = `translate3d(${(-dx * 8).toFixed(2)}px, ${(-dy * 6).toFixed(2)}px, 0)`;
+        raf = 0;
+      });
+    };
+    const onLeave = () => {
+      field.style.transform = "translate3d(0,0,0)";
+    };
+    host.addEventListener("pointermove", onMove);
+    host.addEventListener("pointerleave", onLeave);
+  })();
+</script>
