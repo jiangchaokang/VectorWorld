@@ -1,6 +1,4 @@
 ---
-import { Font } from "astro:assets";
-
 import Table from "../components/Table.astro";
 import MediaLightbox from "../components/MediaLightbox.astro";
 import ProjectHero from "../components/vectorworld/ProjectHero.astro";
@@ -52,14 +50,14 @@ const ogImageUrl =
 ---
 
 <!doctype html>
-<html class="bg-white dark:bg-zinc-900" lang="en" data-theme={theme}>
+<html class="bg-background" lang="en" data-theme={theme}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width" />
     <meta name="generator" content={Astro.generator} />
     <meta name="color-scheme" content="light dark" />
-    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#09090b" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#fbfbfd" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0a0b0d" media="(prefers-color-scheme: dark)" />
 
     {description && <meta name="description" content={description} />}
     {canonicalUrl && <link rel="canonical" href={canonicalUrl} />}
@@ -80,10 +78,7 @@ const ogImageUrl =
     {description && <meta name="twitter:description" content={description} />}
     {ogImageUrl && <meta name="twitter:image" content={ogImageUrl} />}
 
-    <Font
-      cssVariable="--font-noto-sans"
-      preload={[{ subset: "latin", style: "normal" }]}
-    />
+
 
     <script is:inline>
       (() => {
@@ -102,8 +97,10 @@ const ogImageUrl =
   </head>
 
   <body
-    class="prose prose-zinc dark:prose-invert md:prose-lg prose-a:text-blue-600 prose-a:dark:text-blue-300 prose-a:no-underline prose-a:hover:underline prose-a:font-medium prose-code:bg-zinc-100 prose-code:dark:bg-zinc-800 prose-code:text-zinc-800 prose-code:dark:text-zinc-200 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:font-medium prose-code:before:content-none prose-code:after:content-none max-w-none pb-14 pt-6 font-(family-name:--font-noto-sans) selection:bg-blue-100 selection:text-blue-950 dark:selection:bg-blue-500/20 dark:selection:text-blue-50 md:pt-8"
+    class="prose prose-zinc dark:prose-invert md:prose-lg prose-a:text-brand prose-a:no-underline prose-a:hover:underline prose-a:font-medium prose-code:bg-surface-2 prose-code:text-ink-1 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:font-medium prose-code:before:content-none prose-code:after:content-none max-w-none pb-14 pt-6 md:pt-8"
   >
+    <div class="vw-progress" data-progress-bar aria-hidden="true"></div>
+
     <ProjectHero
       title={title}
       authors={authors}
@@ -124,9 +121,121 @@ const ogImageUrl =
       class="mx-auto mt-16 px-6 text-center"
       style="max-width: var(--maximum-text-width);"
     >
-      <p class="not-prose text-sm text-zinc-600 dark:text-zinc-400">
-        Project page for VectorWorld. Built with Astro and customized from Roman Hauksson-Neill's template.
+      <p class="not-prose text-sm text-ink-3">
+        Project page for VectorWorld. Built with Astro · designed in the Instrument Noir system.
       </p>
     </footer>
+
+    <script is:inline>
+      (() => {
+        const reduceMotion = window.matchMedia(
+          "(prefers-reduced-motion: reduce)",
+        ).matches;
+
+        // Scroll reveal — once, with stagger
+        const revealSet = new Set(
+          document.querySelectorAll("[data-reveal]"),
+        );
+        document.querySelectorAll("[data-reveal-group]").forEach((group) => {
+          const stagger = parseInt(
+            group.getAttribute("data-reveal-stagger") || "70",
+            10,
+          );
+          Array.from(group.children).forEach((child, i) => {
+            child.setAttribute("data-reveal-delay", String(i * stagger));
+            revealSet.add(child);
+          });
+        });
+        const revealItems = Array.from(revealSet);
+        revealItems.forEach((el) => el.classList.add("vw-reveal"));
+
+        if (reduceMotion || !("IntersectionObserver" in window)) {
+          revealItems.forEach((el) => el.classList.add("is-visible"));
+        } else {
+          const revealObserver = new IntersectionObserver(
+            (entries, obs) => {
+              entries.forEach((entry) => {
+                if (!entry.isIntersecting) return;
+                const el = entry.target;
+                const delay = el.getAttribute("data-reveal-delay") || "0";
+                el.style.setProperty("--vw-reveal-delay", `${delay}ms`);
+                el.classList.add("is-visible");
+                obs.unobserve(el);
+              });
+            },
+            { rootMargin: "0px 0px -12% 0px", threshold: 0.12 },
+          );
+          revealItems.forEach((el) => revealObserver.observe(el));
+        }
+
+        // Top reading-progress bar
+        const bar = document.querySelector("[data-progress-bar]");
+        if (bar) {
+          let ticking = false;
+          const update = () => {
+            const doc = document.documentElement;
+            const max = doc.scrollHeight - doc.clientHeight;
+            const ratio = max > 0 ? Math.min(1, doc.scrollTop / max) : 0;
+            bar.style.transform = `scaleX(${ratio})`;
+            ticking = false;
+          };
+          update();
+          window.addEventListener(
+            "scroll",
+            () => {
+              if (ticking) return;
+              ticking = true;
+              window.requestAnimationFrame(update);
+            },
+            { passive: true },
+          );
+          window.addEventListener("resize", update, { passive: true });
+        }
+
+        // Signature count-up (one number) — reduced-motion shows final value
+        const counters = Array.from(document.querySelectorAll("[data-countup]"));
+        const runCount = (el) => {
+          const target = parseFloat(el.getAttribute("data-countup") || "0");
+          const decimals = parseInt(
+            el.getAttribute("data-countup-decimals") || "0",
+            10,
+          );
+          const suffix = el.getAttribute("data-countup-suffix") || "";
+          const prefix = el.getAttribute("data-countup-prefix") || "";
+          if (reduceMotion) {
+            el.textContent = `${prefix}${target.toFixed(decimals)}${suffix}`;
+            return;
+          }
+          const duration = 1100;
+          const start = performance.now();
+          const tick = (now) => {
+            const t = Math.min(1, (now - start) / duration);
+            const eased = 1 - Math.pow(1 - t, 3);
+            el.textContent = `${prefix}${(target * eased).toFixed(decimals)}${suffix}`;
+            if (t < 1) requestAnimationFrame(tick);
+            else el.textContent = `${prefix}${target.toFixed(decimals)}${suffix}`;
+          };
+          requestAnimationFrame(tick);
+        };
+
+        if (counters.length) {
+          if (reduceMotion || !("IntersectionObserver" in window)) {
+            counters.forEach(runCount);
+          } else {
+            const countObserver = new IntersectionObserver(
+              (entries, obs) => {
+                entries.forEach((entry) => {
+                  if (!entry.isIntersecting) return;
+                  runCount(entry.target);
+                  obs.unobserve(entry.target);
+                });
+              },
+              { threshold: 0.6 },
+            );
+            counters.forEach((el) => countObserver.observe(el));
+          }
+        }
+      })();
+    </script>
   </body>
 </html>
