@@ -1,4 +1,4 @@
-import { defineConfig, fontProviders } from "astro/config";
+import { defineConfig } from "astro/config";
 import tailwindcss from "@tailwindcss/vite";
 import icon from "astro-icon";
 import mdx from "@astrojs/mdx";
@@ -10,6 +10,7 @@ import rehypeCitation from "rehype-citation";
 import react from "@astrojs/react";
 
 import astroExpressiveCode from "astro-expressive-code";
+import sitemap from "@astrojs/sitemap";
 
 // https://astro.build/config
 export default defineConfig({
@@ -46,17 +47,8 @@ export default defineConfig({
     }),
     mdx(),
     react(),
+    sitemap(),
   ],
-  experimental: {
-    fonts: [
-      {
-        provider: fontProviders.fontsource(),
-        name: "Noto Sans",
-        cssVariable: "--font-noto-sans",
-        weights: [400, 500, 600, 700],
-      },
-    ],
-  },
   image: {
     responsiveStyles: true,
   },
