@@ -15,6 +15,7 @@ authors:
     institution: "Bosch XC-CN"
 theme: "device"
 favicon: "favicon.svg"
+thumbnail: "og-cover.png"
 description: "Streaming vector-graph world model for autonomous-driving simulation: warm-started initialization, one-step frontier completion, and kilometer-scale closed-loop rollout."
 highlights:
   - "Warm-start interaction state aligned with history-conditioned policies"
@@ -78,8 +79,8 @@ export const navSections = [
 <AnchorNav sections={navSections} />
 
 <section id="overview" class="scroll-mt-32">
-  <div class="not-prose mx-auto max-w-5xl text-center">
-    <p class="text-balance text-lg leading-8 text-zinc-700 dark:text-zinc-300 md:text-xl">
+  <div class="not-prose mx-auto max-w-5xl text-center" data-reveal>
+    <p class="text-balance text-lg leading-8 text-ink-2 md:text-xl">
       VectorWorld is a streaming vector-graph world model for closed-loop autonomous-driving
       simulation. It warm-starts history-conditioned policies, outpaints frontier tiles in real
       time, and maintains reactive traffic over kilometer-scale rollout.
@@ -92,7 +93,7 @@ export const navSections = [
     </div>
   </div>
 
-  <div class="mt-8">
+  <div class="mt-8" data-reveal>
     <Wide>
       <FigureBlock
         kind="video"
@@ -111,7 +112,7 @@ export const navSections = [
     </Wide>
   </div>
 
-  <div class="not-prose mt-8 grid gap-4 md:grid-cols-3">
+  <div class="not-prose mt-8 grid gap-4 md:grid-cols-3" data-reveal-group>
     <div class="vw-card p-5">
       <p class="vw-stat-label">Interface</p>
       <p class="vw-stat-value">Warm-start interaction state</p>
@@ -137,7 +138,7 @@ export const navSections = [
     </div>
   </div>
 
-  <div class="not-prose mt-10">
+  <div class="not-prose mt-10" data-reveal>
     <div class="vw-surface-muted p-6 md:p-8">
       <div class="grid gap-6 lg:grid-cols-2">
         <div>
@@ -219,31 +220,36 @@ export const navSections = [
     center={true}
   />
 
-  <Wide>
-    <FigureBlock
-      kind="video"
-      width="wide"
-      stage="panorama"
-      aspectRatio="16 / 9"
-      label="Overview video"
-      src={explanationVideo}
-      controls={true}
-      autoplay={false}
-      muted={false}
-      loop={false}
-      openLabel="Open video"
-    />
-  </Wide>
+  <div data-reveal>
+    <Wide>
+      <FigureBlock
+        kind="video"
+        width="wide"
+        stage="panorama"
+        aspectRatio="16 / 9"
+        label="Overview video"
+        src={explanationVideo}
+        controls={true}
+        autoplay={false}
+        muted={false}
+        loop={false}
+        openLabel="Open video"
+      />
+    </Wide>
+  </div>
 </section>
+
+<div class="vw-connector" aria-hidden="true"></div>
 
 <section id="method" class="mt-20 scroll-mt-32">
   <SectionHeading
+    index="01"
     eyebrow="Method"
     title="A deployment-oriented three-component stack"
     subtitle="Warm-start interface → one-step relational generation → physics-aligned closed loop."
   />
 
-  <div class="mt-8">
+  <div class="mt-8" data-reveal>
     <Wide>
       <FigureBlock
         kind="image"
@@ -260,7 +266,7 @@ export const navSections = [
     </Wide>
   </div>
 
-  <div class="mt-10">
+  <div class="mt-10" data-reveal>
     <Wide>
       <div class="mx-auto max-w-screen-xl">
         <MethodScrollytelling />
@@ -269,17 +275,20 @@ export const navSections = [
   </div>
 </section>
 
+<div class="vw-connector" aria-hidden="true"></div>
+
 <section id="quality" class="mt-20 scroll-mt-32">
   <SectionHeading
+    index="02"
     eyebrow="Initialization quality"
     title="Initialization quality on Waymo and nuPlan"
     subtitle="VectorWorld improves lane continuity, route validity, and agent-map consistency at initialization."
   />
 
-  <div class="not-prose mt-6 grid gap-4 md:grid-cols-3">
+  <div class="not-prose mt-6 grid gap-4 md:grid-cols-3" data-reveal-group>
     <div class="vw-card p-5">
       <p class="vw-stat-label">nuPlan endpoint gap</p>
-      <p class="vw-stat-value">0.078 m</p>
+      <p class="vw-stat-value vw-accent-text">0.078 m</p>
       <p class="vw-stat-copy">
         Smaller lane-transition error than ScenDream-L (0.250 m).
       </p>
@@ -302,7 +311,7 @@ export const navSections = [
     </div>
   </div>
 
-  <div class="mt-8">
+  <div class="mt-8" data-reveal>
     <Wide>
       <FigureBlock
         kind="image"
@@ -319,14 +328,17 @@ export const navSections = [
   </div>
 </section>
 
+<div class="vw-connector" aria-hidden="true"></div>
+
 <section id="efficiency" class="mt-20 scroll-mt-32">
   <SectionHeading
+    index="03"
     eyebrow="Efficiency"
     title="One-step generation in the real-time regime"
     subtitle="Matched clip progress across the multi-step baseline, few-step MeanFlow, and the one-step deployment point."
   />
 
-  <div class="mt-8">
+  <div class="mt-8" data-reveal>
     <Wide>
       <div class="mx-auto max-w-screen-xl">
         <EfficiencyExplorer />
@@ -334,7 +346,7 @@ export const navSections = [
     </Wide>
   </div>
 
-  <div class="mt-8">
+  <div class="mt-8" data-reveal>
     <Wide>
       <FigureBlock
         kind="image"
@@ -352,17 +364,20 @@ export const navSections = [
   </div>
 </section>
 
+<div class="vw-connector" aria-hidden="true"></div>
+
 <section id="rollout" class="mt-20 scroll-mt-32">
   <SectionHeading
+    index="04"
     eyebrow="Closed loop"
     title="Long-horizon rollout evidence and exported scene inspection"
     subtitle="Closed-loop demos, key rollout metrics, and a lightweight viewer for exported vector scenes."
   />
 
-  <div class="not-prose mt-6 grid gap-4 md:grid-cols-3">
+  <div class="not-prose mt-6 grid gap-4 md:grid-cols-3" data-reveal-group>
     <div class="vw-card p-5">
       <p class="vw-stat-label">Warm start</p>
-      <p class="vw-stat-value">16.6 → 9.6 jerk</p>
+      <p class="vw-stat-value">16.6 → <span class="vw-accent-text">9.6</span> jerk</p>
       <p class="vw-stat-copy">
         Warm-started interaction states reduce early-horizon instability in closed loop.
       </p>
@@ -378,14 +393,14 @@ export const navSections = [
 
     <div class="vw-card p-5">
       <p class="vw-stat-label">Training value</p>
-      <p class="vw-stat-value">25.7% → 56.0%</p>
+      <p class="vw-stat-value">25.7% → <span class="vw-accent-text" data-countup="56.0" data-countup-decimals="1" data-countup-suffix="%">56.0%</span></p>
       <p class="vw-stat-copy">
         PPO success improves after retraining inside the VectorWorld environment.
       </p>
     </div>
   </div>
 
-  <div class="mt-8">
+  <div class="mt-8" data-reveal>
     <Wide>
       <div class="mx-auto max-w-screen-xl">
         <VectorSceneViewer />
@@ -393,7 +408,7 @@ export const navSections = [
     </Wide>
   </div>
 
-  <div class="not-prose mt-10">
+  <div class="not-prose mt-10" data-reveal>
     <Wide>
       <div class="mx-auto grid max-w-screen-xl gap-6 lg:grid-cols-2">
         <article class="vw-card p-4">
@@ -452,14 +467,17 @@ export const navSections = [
   </div>
 </section>
 
+<div class="vw-connector" aria-hidden="true"></div>
+
 <section id="surround-view" class="mt-20 scroll-mt-32">
   <SectionHeading
+    index="05"
     eyebrow="Surround-view generation"
     title="VectorWorld as a controllable layout prior for surround-view video generation"
     subtitle="The generated vector scene provides explicit layout control for downstream surround-view video generation."
   />
 
-  <div class="mt-8">
+  <div class="mt-8" data-reveal>
     <Wide>
       <div class="mx-auto max-w-screen-xl">
         <SurroundViewCaseSlider />
@@ -476,7 +494,7 @@ export const navSections = [
     center={true}
   />
 
-  <div class="not-prose mx-auto max-w-4xl">
+  <div class="not-prose mx-auto max-w-4xl" data-reveal>
     <BibtexCard
       code={bibtex}
       subtitle="Copy directly into your bibliography file."
