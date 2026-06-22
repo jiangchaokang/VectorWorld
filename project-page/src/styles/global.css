@@ -2,6 +2,8 @@
 @plugin "@tailwindcss/typography";
 @import "tw-animate-css";
 @plugin "@tailwindcss/forms";
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/jetbrains-mono";
 
 @custom-variant dark {
   &:where([data-theme="dark"], [data-theme="dark"] *) {
@@ -24,6 +26,10 @@ html {
   scroll-behavior: smooth;
 }
 
+/* ============================================================
+   Instrument Noir — design tokens
+   One curve, three speeds. One accent. Two type voices.
+   ============================================================ */
 :root {
   --maximum-text-width: 70rem;
   --maximum-wide-width: 94rem;
@@ -34,22 +40,72 @@ html {
   );
   --actual-text-width: calc(100cqw - 2 * var(--actual-inline-margin));
 
-  --background: var(--color-white);
-  --foreground: var(--color-zinc-950);
-  --card: var(--color-white);
-  --card-foreground: var(--color-zinc-950);
-  --popover: var(--color-white);
-  --popover-foreground: var(--color-zinc-950);
-  --primary: var(--color-blue-700);
-  --primary-foreground: var(--color-zinc-50);
-  --primary-accent: var(--color-blue-700);
-  --secondary: var(--color-fuchsia-700);
-  --secondary-foreground: var(--color-zinc-50);
-  --secondary-accent: var(--color-fuchsia-700);
-  --muted: var(--color-zinc-100);
-  --muted-foreground: var(--color-zinc-600);
-  --accent: var(--color-zinc-100);
-  --accent-foreground: var(--color-zinc-900);
+  /* Motion */
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-emphasized: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-fast: 0.18s;
+  --dur-base: 0.4s;
+  --dur-slow: 0.7s;
+
+  /* Spacing rhythm */
+  --space-1: 0.5rem;
+  --space-2: 1rem;
+  --space-3: 1.5rem;
+  --space-4: 2rem;
+  --space-6: 3rem;
+  --space-8: 4rem;
+  --space-12: 6rem;
+
+  /* Radii */
+  --r-xs: 0.5rem;
+  --r-btn: 0.75rem;
+  --r-card: 1.25rem;
+  --r-lg: 1.75rem;
+  --r-pill: 9999px;
+
+  /* Type */
+  --font-sans: "Geist Variable", "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, "SFMono-Regular", monospace;
+  --display: clamp(2.75rem, 6vw, 5.25rem);
+  --eyebrow-tracking: 0.16em;
+}
+
+/* Light — full parity, not a dark inversion */
+:root,
+html[data-theme="light"] {
+  --vw-bg: #fbfbfd;
+  --vw-surface-1: #ffffff;
+  --vw-surface-2: #f4f5f7;
+  --vw-surface-3: #eceef1;
+  --vw-hairline: rgba(10, 11, 13, 0.1);
+  --vw-hairline-strong: rgba(10, 11, 13, 0.18);
+  --vw-text-1: #0a0b0d;
+  --vw-text-2: #51565e;
+  --vw-text-3: #8a9099;
+  --vw-accent: #0891b2;
+  --vw-accent-strong: #0e7490;
+  --vw-accent-contrast: #ffffff;
+  --vw-accent-soft: rgba(8, 145, 178, 0.1);
+  --vw-accent-line: rgba(8, 145, 178, 0.32);
+  --vw-glow: rgba(8, 145, 178, 0.09);
+  --vw-canvas: #0a0b0d;
+
+  --background: var(--vw-bg);
+  --foreground: var(--vw-text-1);
+  --card: var(--vw-surface-1);
+  --card-foreground: var(--vw-text-1);
+  --popover: var(--vw-surface-1);
+  --popover-foreground: var(--vw-text-1);
+  --primary: var(--vw-accent);
+  --primary-foreground: var(--vw-accent-contrast);
+  --primary-accent: var(--vw-accent);
+  --secondary: var(--vw-text-1);
+  --secondary-foreground: #ffffff;
+  --secondary-accent: var(--vw-accent-strong);
+  --muted: var(--vw-surface-2);
+  --muted-foreground: var(--vw-text-2);
+  --accent: var(--vw-surface-2);
+  --accent-foreground: var(--vw-text-1);
   --info: var(--color-sky-300);
   --info-foreground: var(--color-sky-950);
   --success: var(--color-green-300);
@@ -58,29 +114,46 @@ html {
   --warning-foreground: var(--color-amber-950);
   --error: var(--color-red-700);
   --error-foreground: var(--color-zinc-50);
-  --border: var(--color-zinc-200);
-  --input: var(--color-zinc-200);
-  --outline: var(--color-zinc-400);
-  --radius: 0.625rem;
+  --border: var(--vw-hairline);
+  --input: var(--vw-hairline-strong);
+  --outline: var(--vw-accent);
+  --radius: 0.75rem;
 }
 
 html[data-theme="dark"] {
-  --background: var(--color-zinc-950);
-  --foreground: var(--color-zinc-50);
-  --card: var(--color-zinc-900);
-  --card-foreground: var(--color-zinc-50);
-  --popover: var(--color-zinc-800);
-  --popover-foreground: var(--color-zinc-50);
-  --primary: var(--color-blue-700);
-  --primary-foreground: var(--color-zinc-50);
-  --primary-accent: var(--color-blue-400);
-  --secondary: var(--color-fuchsia-700);
-  --secondary-foreground: var(--color-zinc-50);
-  --secondary-accent: var(--color-fuchsia-400);
-  --muted: var(--color-zinc-800);
-  --muted-foreground: var(--color-zinc-400);
-  --accent: var(--color-zinc-700);
-  --accent-foreground: var(--color-zinc-100);
+  --vw-bg: #0a0b0d;
+  --vw-surface-1: #121419;
+  --vw-surface-2: #1a1d24;
+  --vw-surface-3: #21252e;
+  --vw-hairline: rgba(255, 255, 255, 0.08);
+  --vw-hairline-strong: rgba(255, 255, 255, 0.16);
+  --vw-text-1: #f4f6f8;
+  --vw-text-2: #a3aab5;
+  --vw-text-3: #6b7280;
+  --vw-accent: #22d3ee;
+  --vw-accent-strong: #67e8f9;
+  --vw-accent-contrast: #05141a;
+  --vw-accent-soft: rgba(34, 211, 238, 0.12);
+  --vw-accent-line: rgba(34, 211, 238, 0.3);
+  --vw-glow: rgba(34, 211, 238, 0.16);
+  --vw-canvas: #06080b;
+
+  --background: var(--vw-bg);
+  --foreground: var(--vw-text-1);
+  --card: var(--vw-surface-1);
+  --card-foreground: var(--vw-text-1);
+  --popover: var(--vw-surface-2);
+  --popover-foreground: var(--vw-text-1);
+  --primary: var(--vw-accent);
+  --primary-foreground: var(--vw-accent-contrast);
+  --primary-accent: var(--vw-accent);
+  --secondary: var(--vw-text-1);
+  --secondary-foreground: var(--vw-bg);
+  --secondary-accent: var(--vw-accent-strong);
+  --muted: var(--vw-surface-2);
+  --muted-foreground: var(--vw-text-2);
+  --accent: var(--vw-surface-2);
+  --accent-foreground: var(--vw-text-1);
   --info: var(--color-sky-300);
   --info-foreground: var(--color-sky-950);
   --success: var(--color-green-300);
@@ -89,40 +162,49 @@ html[data-theme="dark"] {
   --warning-foreground: var(--color-amber-950);
   --error: var(--color-red-800);
   --error-foreground: var(--color-zinc-50);
-  --border: rgba(255, 255, 255, 0.1);
-  --input: rgba(255, 255, 255, 0.15);
-  --outline: var(--color-zinc-500);
+  --border: var(--vw-hairline);
+  --input: var(--vw-hairline-strong);
+  --outline: var(--vw-accent);
 }
 
 @media (prefers-color-scheme: dark) {
   html[data-theme="device"] {
-    --background: var(--color-zinc-950);
-    --foreground: var(--color-zinc-50);
-    --card: var(--color-zinc-900);
-    --card-foreground: var(--color-zinc-50);
-    --popover: var(--color-zinc-800);
-    --popover-foreground: var(--color-zinc-50);
-    --primary: var(--color-blue-700);
-    --primary-foreground: var(--color-zinc-50);
-    --primary-accent: var(--color-blue-400);
-    --secondary: var(--color-fuchsia-700);
-    --secondary-foreground: var(--color-zinc-50);
-    --secondary-accent: var(--color-fuchsia-400);
-    --muted: var(--color-zinc-800);
-    --muted-foreground: var(--color-zinc-400);
-    --accent: var(--color-zinc-700);
-    --accent-foreground: var(--color-zinc-100);
-    --info: var(--color-sky-300);
-    --info-foreground: var(--color-sky-950);
-    --success: var(--color-green-300);
-    --success-foreground: var(--color-green-950);
-    --warning: var(--color-amber-300);
-    --warning-foreground: var(--color-amber-950);
-    --error: var(--color-red-800);
-    --error-foreground: var(--color-zinc-50);
-    --border: rgba(255, 255, 255, 0.1);
-    --input: rgba(255, 255, 255, 0.15);
-    --outline: var(--color-zinc-500);
+    --vw-bg: #0a0b0d;
+    --vw-surface-1: #121419;
+    --vw-surface-2: #1a1d24;
+    --vw-surface-3: #21252e;
+    --vw-hairline: rgba(255, 255, 255, 0.08);
+    --vw-hairline-strong: rgba(255, 255, 255, 0.16);
+    --vw-text-1: #f4f6f8;
+    --vw-text-2: #a3aab5;
+    --vw-text-3: #6b7280;
+    --vw-accent: #22d3ee;
+    --vw-accent-strong: #67e8f9;
+    --vw-accent-contrast: #05141a;
+    --vw-accent-soft: rgba(34, 211, 238, 0.12);
+    --vw-accent-line: rgba(34, 211, 238, 0.3);
+    --vw-glow: rgba(34, 211, 238, 0.16);
+    --vw-canvas: #06080b;
+
+    --background: var(--vw-bg);
+    --foreground: var(--vw-text-1);
+    --card: var(--vw-surface-1);
+    --card-foreground: var(--vw-text-1);
+    --popover: var(--vw-surface-2);
+    --popover-foreground: var(--vw-text-1);
+    --primary: var(--vw-accent);
+    --primary-foreground: var(--vw-accent-contrast);
+    --primary-accent: var(--vw-accent);
+    --secondary: var(--vw-text-1);
+    --secondary-foreground: var(--vw-bg);
+    --secondary-accent: var(--vw-accent-strong);
+    --muted: var(--vw-surface-2);
+    --muted-foreground: var(--vw-text-2);
+    --accent: var(--vw-surface-2);
+    --accent-foreground: var(--vw-text-1);
+    --border: var(--vw-hairline);
+    --input: var(--vw-hairline-strong);
+    --outline: var(--vw-accent);
   }
 }
 
@@ -155,18 +237,35 @@ html[data-theme="dark"] {
   --color-input: var(--input);
   --color-outline: var(--outline);
 
-  --radius-xs: calc(var(--radius) - 0.375rem);
-  --radius-sm: calc(var(--radius) - 0.25rem);
-  --radius-md: calc(var(--radius) - 0.125rem);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 0.25rem);
-  --radius-2xl: calc(var(--radius) + 0.5rem);
-  --radius-3xl: calc(var(--radius) + 1rem);
+  /* Brand accent + surface scale, theme-aware */
+  --color-brand: var(--vw-accent);
+  --color-brand-strong: var(--vw-accent-strong);
+  --color-brand-soft: var(--vw-accent-soft);
+  --color-brand-contrast: var(--vw-accent-contrast);
+  --color-hairline: var(--vw-hairline);
+  --color-hairline-strong: var(--vw-hairline-strong);
+  --color-ink-1: var(--vw-text-1);
+  --color-ink-2: var(--vw-text-2);
+  --color-ink-3: var(--vw-text-3);
+  --color-surface-1: var(--vw-surface-1);
+  --color-surface-2: var(--vw-surface-2);
+  --color-surface-3: var(--vw-surface-3);
+
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+
+  --radius-xs: var(--r-xs);
+  --radius-sm: calc(var(--r-btn) - 0.25rem);
+  --radius-md: calc(var(--r-btn) - 0.125rem);
+  --radius-lg: var(--r-btn);
+  --radius-xl: var(--r-card);
+  --radius-2xl: var(--r-lg);
+  --radius-3xl: calc(var(--r-lg) + 0.5rem);
 }
 
 @layer base {
   * {
-    @apply border-border outline-outline/50 wrap-break-word;
+    @apply border-border wrap-break-word;
   }
 
   button {
@@ -174,8 +273,14 @@ html[data-theme="dark"] {
   }
 
   :focus-visible {
-    outline: 2px solid rgb(59 130 246 / 0.9);
+    outline: 2px solid var(--vw-accent);
     outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  ::selection {
+    background: var(--vw-accent-soft);
+    color: var(--vw-text-1);
   }
 }
 
@@ -183,12 +288,15 @@ body {
   position: relative;
   isolation: isolate;
   min-height: 100vh;
-  color: var(--foreground);
+  font-family: var(--font-sans);
+  color: var(--vw-text-1);
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  background-color: var(--background);
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--vw-bg);
 }
 
+/* Ambient accent aurora (quiet, top-anchored) */
 body::before {
   content: "";
   position: fixed;
@@ -196,53 +304,33 @@ body::before {
   z-index: -2;
   pointer-events: none;
   background:
-    radial-gradient(circle at 50% 0%, rgba(37, 99, 235, 0.08), transparent 30rem),
-    radial-gradient(circle at 100% 0%, rgba(124, 58, 237, 0.05), transparent 18rem);
+    radial-gradient(58rem 26rem at 50% -8rem, var(--vw-glow), transparent 72%),
+    radial-gradient(40rem 20rem at 88% 2rem, var(--vw-glow), transparent 70%);
+  opacity: 0.85;
 }
 
+/* Faint vector grid motif, masked to fade out */
 body::after {
   content: "";
   position: fixed;
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  opacity: 0.16;
+  opacity: 0.6;
   background-image:
-    linear-gradient(rgba(148, 163, 184, 0.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(148, 163, 184, 0.07) 1px, transparent 1px);
-  background-size: 32px 32px;
-  -webkit-mask-image: linear-gradient(
-    to bottom,
-    rgba(0, 0, 0, 0.16),
-    transparent 74%
+    linear-gradient(var(--vw-hairline) 1px, transparent 1px),
+    linear-gradient(90deg, var(--vw-hairline) 1px, transparent 1px);
+  background-size: 38px 38px;
+  -webkit-mask-image: radial-gradient(
+    120% 70% at 50% 0%,
+    rgba(0, 0, 0, 0.5),
+    transparent 70%
   );
-  mask-image: linear-gradient(
-    to bottom,
-    rgba(0, 0, 0, 0.16),
-    transparent 74%
+  mask-image: radial-gradient(
+    120% 70% at 50% 0%,
+    rgba(0, 0, 0, 0.5),
+    transparent 70%
   );
-}
-
-html[data-theme="dark"] body::before {
-  background:
-    radial-gradient(circle at 50% 0%, rgba(37, 99, 235, 0.14), transparent 28rem),
-    radial-gradient(circle at 100% 0%, rgba(124, 58, 237, 0.08), transparent 16rem);
-}
-
-html[data-theme="dark"] body::after {
-  opacity: 0.08;
-}
-
-@media (prefers-color-scheme: dark) {
-  html[data-theme="device"] body::before {
-    background:
-      radial-gradient(circle at 50% 0%, rgba(37, 99, 235, 0.14), transparent 28rem),
-      radial-gradient(circle at 100% 0%, rgba(124, 58, 237, 0.08), transparent 16rem);
-  }
-
-  html[data-theme="device"] body::after {
-    opacity: 0.08;
-  }
 }
 
 main {
@@ -270,43 +358,520 @@ main .katex-display {
   text-indent: -2rem;
 }
 
-/* Surface primitives */
+/* ============================================================
+   Surfaces — hairline elevation, no black shadow in dark
+   ============================================================ */
 .vw-surface {
-  @apply rounded-3xl border border-zinc-200/80 bg-white/90 shadow-sm backdrop-blur dark:border-zinc-800/80 dark:bg-zinc-900/85;
+  border: 1px solid var(--vw-hairline);
+  border-radius: var(--r-card);
+  background: var(--vw-surface-1);
 }
 
 .vw-surface-muted {
-  @apply rounded-3xl border border-zinc-200/80 bg-zinc-50/90 shadow-sm backdrop-blur dark:border-zinc-800/80 dark:bg-zinc-950/85;
+  border: 1px solid var(--vw-hairline);
+  border-radius: var(--r-card);
+  background: var(--vw-surface-2);
 }
 
 .vw-card {
-  @apply rounded-3xl border border-zinc-200/80 bg-white/90 shadow-sm backdrop-blur transition duration-200 ease-out hover:shadow-md dark:border-zinc-800/80 dark:bg-zinc-900/85;
+  border: 1px solid var(--vw-hairline);
+  border-radius: var(--r-card);
+  background: var(--vw-surface-1);
+  transition:
+    transform var(--dur-base) var(--ease),
+    border-color var(--dur-base) var(--ease),
+    background-color var(--dur-base) var(--ease);
+}
+
+.vw-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--vw-hairline-strong);
 }
 
 .vw-card-muted {
-  @apply rounded-2xl border border-zinc-200/80 bg-zinc-50/95 shadow-sm transition duration-200 ease-out hover:shadow-sm dark:border-zinc-800/80 dark:bg-zinc-950/90;
+  border: 1px solid var(--vw-hairline);
+  border-radius: var(--r-btn);
+  background: var(--vw-surface-2);
+  transition:
+    transform var(--dur-base) var(--ease),
+    border-color var(--dur-base) var(--ease);
 }
 
-/* Pills, buttons, labels */
+.vw-card-interactive:hover {
+  transform: translateY(-2px);
+  border-color: var(--vw-accent-line);
+}
+
+/* ============================================================
+   Pills, buttons, eyebrows
+   ============================================================ */
 .vw-pill {
-  @apply inline-flex items-center gap-2 rounded-full border border-zinc-300 bg-white/90 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:border-blue-300 hover:bg-zinc-50 hover:text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900/90 dark:text-zinc-300 dark:hover:border-blue-400 dark:hover:bg-zinc-800 dark:hover:text-white;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--vw-hairline);
+  background: var(--vw-surface-1);
+  padding: 0.55rem 1rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--vw-text-2);
+  transition:
+    color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease);
+}
+
+.vw-pill:hover {
+  color: var(--vw-text-1);
+  border-color: var(--vw-accent-line);
+}
+
+.vw-pill:active {
+  transform: scale(0.98);
 }
 
 .vw-button-primary {
-  @apply inline-flex items-center justify-center rounded-full bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: var(--r-pill);
+  background: var(--vw-accent);
+  padding: 0.6rem 1.15rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--vw-accent-contrast);
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease);
+}
+
+.vw-button-primary:hover {
+  background: var(--vw-accent-strong);
+  box-shadow: 0 0 0 1px var(--vw-accent-line);
+}
+
+.vw-button-primary:active {
+  transform: scale(0.98);
 }
 
 .vw-button-secondary {
-  @apply inline-flex items-center justify-center rounded-full border border-zinc-300 bg-white/90 px-4 py-2 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900/90 dark:text-zinc-200 dark:hover:bg-zinc-800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--vw-hairline-strong);
+  background: var(--vw-surface-1);
+  padding: 0.6rem 1.15rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--vw-text-1);
+  transition:
+    border-color var(--dur-fast) var(--ease),
+    background-color var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease);
 }
 
+.vw-button-secondary:hover {
+  border-color: var(--vw-accent-line);
+  background: var(--vw-surface-2);
+}
+
+.vw-button-secondary:active {
+  transform: scale(0.98);
+}
+
+.vw-button-secondary[data-copied="true"] {
+  border-color: var(--vw-accent-line);
+  background: var(--vw-accent-soft);
+  color: var(--vw-accent);
+}
+
+/* Mono technical eyebrow */
 .vw-eyebrow {
-  @apply inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-blue-700 dark:bg-blue-500/10 dark:text-blue-300;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: var(--eyebrow-tracking);
+  color: var(--vw-accent);
 }
 
-/* Media */
+.vw-eyebrow::before {
+  content: "";
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 1px;
+  background: var(--vw-accent);
+  box-shadow: 0 0 0 3px var(--vw-accent-soft);
+  transform: rotate(45deg);
+}
+
+.vw-eyebrow--plain::before {
+  display: none;
+}
+
+/* Section index marker (mono 01 / 02 + node) */
+.vw-section-index {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  color: var(--vw-text-3);
+}
+
+/* ============================================================
+   Typography helpers
+   ============================================================ */
+.vw-lead {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--vw-text-2);
+}
+
+@media (min-width: 768px) {
+  .vw-lead {
+    font-size: 1.125rem;
+  }
+}
+
+.vw-card-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--vw-text-1);
+}
+
+.vw-card-copy {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--vw-text-2);
+}
+
+.vw-stat-label {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--vw-text-3);
+}
+
+.vw-stat-value {
+  margin-top: 0.65rem;
+  font-size: 1.35rem;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--vw-text-1);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 768px) {
+  .vw-stat-value {
+    font-size: 1.6rem;
+  }
+}
+
+.vw-stat-copy {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--vw-text-2);
+}
+
+.vw-num {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.vw-accent-text {
+  color: var(--vw-accent);
+}
+
+/* ============================================================
+   Section heading + connector motif
+   ============================================================ */
+.vw-section {
+  position: relative;
+}
+
+.vw-connector {
+  display: block;
+  position: relative;
+  width: 1px;
+  height: var(--space-12);
+  margin-inline: auto;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    var(--vw-hairline-strong) 30%,
+    var(--vw-hairline-strong) 70%,
+    transparent
+  );
+}
+
+.vw-connector::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 1px;
+  background: var(--vw-bg);
+  border: 1px solid var(--vw-accent-line);
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+/* ============================================================
+   Glass anchor navigation + sliding accent underline
+   ============================================================ */
+.vw-anchor {
+  position: sticky;
+  top: 0.85rem;
+  z-index: 40;
+  margin-bottom: var(--space-4);
+}
+
+.vw-anchor-shell {
+  position: relative;
+  display: flex;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--vw-hairline);
+  background: color-mix(in srgb, var(--vw-surface-1) 72%, transparent);
+  padding: 0.35rem;
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  backdrop-filter: blur(20px) saturate(1.4);
+}
+
+.vw-anchor-shell::-webkit-scrollbar {
+  display: none;
+}
+
+.vw-anchor-list {
+  position: relative;
+  margin: 0;
+  display: flex;
+  min-width: max-content;
+  list-style: none;
+  gap: 0.15rem;
+  padding: 0;
+}
+
+.vw-anchor-link {
+  position: relative;
+  display: block;
+  border-radius: var(--r-pill);
+  padding: 0.5rem 0.95rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--vw-text-2);
+  white-space: nowrap;
+  transition:
+    color var(--dur-base) var(--ease),
+    background-color var(--dur-base) var(--ease);
+  z-index: 1;
+}
+
+.vw-anchor-link:hover {
+  color: var(--vw-text-1);
+}
+
+.vw-anchor-link.is-active {
+  color: var(--vw-accent);
+}
+
+.vw-anchor-indicator {
+  position: absolute;
+  top: 0.35rem;
+  bottom: 0.35rem;
+  left: 0;
+  border-radius: var(--r-pill);
+  background: var(--vw-accent-soft);
+  box-shadow: inset 0 0 0 1px var(--vw-accent-line);
+  transition:
+    transform var(--dur-base) var(--ease),
+    width var(--dur-base) var(--ease),
+    opacity var(--dur-base) var(--ease);
+  z-index: 0;
+  opacity: 0;
+}
+
+/* Top reading-progress bar */
+.vw-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 2px;
+  width: 100%;
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  background: linear-gradient(90deg, var(--vw-accent), var(--vw-accent-strong));
+  z-index: 60;
+  pointer-events: none;
+}
+
+/* ============================================================
+   Hero
+   ============================================================ */
+.vw-hero-shell {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--vw-hairline);
+  background: var(--vw-surface-1);
+}
+
+.vw-hero-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.vw-hero-shell > *:not(.vw-hero-canvas) {
+  position: relative;
+  z-index: 1;
+}
+
+.vw-hero-brand-wrap {
+  display: flex;
+  justify-content: center;
+}
+
+.vw-hero-brand {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(2.5rem, 7vw, 5rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.vw-hero-brand .vw-wordmark {
+  align-items: center;
+  gap: 0.72rem;
+}
+
+.vw-hero-brand .vw-wordmark__text,
+.vw-hero-brand-fallback {
+  position: relative;
+  display: inline-block;
+  min-width: 0;
+  line-height: 1;
+  color: var(--vw-text-1);
+}
+
+.vw-hero-title {
+  margin-inline: auto;
+  max-width: 60rem;
+  text-wrap: balance;
+  font-size: clamp(1.6rem, 3.4vw, 2.6rem);
+  font-weight: 500;
+  line-height: 1.18;
+  letter-spacing: -0.02em;
+  color: var(--vw-text-1);
+}
+
+.vw-hero-subtitle {
+  margin-inline: auto;
+  margin-top: 1.1rem;
+  max-width: 56rem;
+  text-wrap: balance;
+  font-size: clamp(1.5rem, 3vw, 2.25rem);
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: var(--vw-text-1);
+}
+
+.vw-hero-highlight-card {
+  border-radius: var(--r-btn);
+  border: 1px solid var(--vw-hairline);
+  background: color-mix(in srgb, var(--vw-surface-2) 70%, transparent);
+  padding: 1rem;
+  text-align: left;
+  transition:
+    border-color var(--dur-base) var(--ease),
+    transform var(--dur-base) var(--ease);
+}
+
+.vw-hero-highlight-card:hover {
+  border-color: var(--vw-accent-line);
+  transform: translateY(-2px);
+}
+
+.vw-hero-highlight-index {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  color: var(--vw-accent);
+}
+
+.vw-hero-highlight-copy {
+  margin-top: 0.6rem;
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: var(--vw-text-2);
+}
+
+/* ============================================================
+   Segmented control
+   ============================================================ */
+.vw-segmented {
+  display: inline-flex;
+  gap: 0.2rem;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--vw-hairline);
+  background: var(--vw-surface-2);
+  padding: 0.25rem;
+}
+
+.vw-segmented__item {
+  border-radius: var(--r-pill);
+  padding: 0.4rem 0.9rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--vw-text-2);
+  transition:
+    color var(--dur-fast) var(--ease),
+    background-color var(--dur-fast) var(--ease);
+}
+
+.vw-segmented__item:hover {
+  color: var(--vw-text-1);
+}
+
+.vw-segmented__item[aria-pressed="true"],
+.vw-segmented__item[data-active="true"] {
+  background: var(--vw-surface-1);
+  color: var(--vw-accent);
+  box-shadow: inset 0 0 0 1px var(--vw-accent-line);
+}
+
+/* ============================================================
+   Media
+   ============================================================ */
 .vw-media-frame {
-  @apply overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-950 shadow-inner dark:border-zinc-800;
+  overflow: hidden;
+  border-radius: var(--r-card);
+  border: 1px solid var(--vw-hairline);
+  background: var(--vw-canvas);
 }
 
 .vw-media-frame video {
@@ -314,7 +879,7 @@ main .katex-display {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  background: #020617;
+  background: var(--vw-canvas);
 }
 
 .vw-media-frame--wide {
@@ -333,145 +898,112 @@ main .katex-display {
   aspect-ratio: 880 / 1080;
 }
 
-/* Anchor navigation */
-.vw-anchor-shell {
-  @apply overflow-x-auto rounded-full border border-zinc-200/80 bg-white/90 px-2 py-2 shadow-sm backdrop-blur dark:border-zinc-800/80 dark:bg-zinc-950/80;
+/* ============================================================
+   Motion grammar — reveal (once) + skeleton + drift
+   ============================================================ */
+.vw-reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity var(--dur-slow) var(--ease),
+    transform var(--dur-slow) var(--ease);
+  transition-delay: var(--vw-reveal-delay, 0ms);
+  will-change: opacity, transform;
 }
 
-.vw-anchor-list {
-  @apply m-0 flex min-w-max list-none gap-1.5 p-0;
+.vw-reveal.is-visible {
+  opacity: 1;
+  transform: none;
 }
 
-.vw-anchor-link {
-  @apply block rounded-full px-4 py-2 text-sm font-medium text-zinc-600 transition duration-200 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100;
-}
-
-.vw-anchor-link.is-active {
-  @apply bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900;
-}
-
-/* Hero */
-.vw-hero-shell {
+.vw-skeleton {
   position: relative;
   overflow: hidden;
-  @apply rounded-3xl border border-zinc-200/80 bg-white/90 shadow-sm backdrop-blur dark:border-zinc-800/80 dark:bg-zinc-900/85;
+  background: var(--vw-surface-2);
 }
 
-.vw-hero-shell::before {
+.vw-skeleton::after {
   content: "";
   position: absolute;
   inset: 0;
-  pointer-events: none;
-  background:
-    linear-gradient(135deg, rgba(37, 99, 235, 0.05), transparent 42%),
-    radial-gradient(circle at 80% 18%, rgba(168, 85, 247, 0.08), transparent 24%);
-}
-
-.vw-hero-shell::after {
-  content: "";
-  position: absolute;
-  inset: auto -12% -28% 38%;
-  height: 9rem;
-  pointer-events: none;
-  background: radial-gradient(circle, rgba(59, 130, 246, 0.12), transparent 62%);
-  filter: blur(18px);
-}
-
-.vw-hero-brand-wrap {
-  @apply flex justify-center;
-}
-
-.vw-hero-brand {
-  @apply inline-flex items-center justify-center text-4xl font-semibold tracking-tight sm:text-5xl lg:text-6xl;
-}
-
-.vw-hero-brand .vw-wordmark {
-  align-items: center;
-  gap: 0.72rem;
-}
-
-.vw-hero-brand .vw-wordmark__icon {
-  padding-top: 0;
-  transform: translateY(0.02em);
-}
-
-.vw-hero-brand .vw-wordmark__text,
-.vw-hero-brand-fallback {
-  position: relative;
-  display: inline-block;
-  min-width: 0;
-  line-height: 1;
-  background: linear-gradient(90deg, #2563eb 0%, #7c3aed 68%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-.vw-hero-brand .vw-wordmark__text::after,
-.vw-hero-brand-fallback::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -0.4rem;
-  height: 0.28rem;
-  border-radius: 9999px;
   background: linear-gradient(
     90deg,
-    rgba(37, 99, 235, 0.18),
-    rgba(124, 58, 237, 0.18)
+    transparent,
+    var(--vw-accent-soft),
+    transparent
   );
-  filter: blur(5px);
+  transform: translateX(-100%);
+  animation: vw-shimmer 1.4s var(--ease) infinite;
 }
 
-.vw-hero-title {
-  @apply mx-auto max-w-5xl text-balance text-2xl font-semibold leading-tight tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-3xl lg:text-4xl;
+@keyframes vw-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
 }
 
-.vw-hero-subtitle {
-  @apply mx-auto mt-4 max-w-5xl text-balance text-2xl font-semibold leading-tight tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-3xl lg:text-4xl;
+@keyframes vw-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -8px, 0);
+  }
 }
 
-.vw-hero-highlight-card {
-  @apply rounded-2xl border border-zinc-200/80 bg-white/80 p-4 text-left shadow-sm dark:border-zinc-800/80 dark:bg-zinc-950/70;
+@keyframes vw-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
-.vw-hero-highlight-index {
-  @apply text-xs font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-300;
+/* ============================================================
+   Print
+   ============================================================ */
+@media print {
+  body::before,
+  body::after,
+  .vw-anchor,
+  .vw-progress,
+  .vw-hero-canvas {
+    display: none !important;
+  }
+
+  body {
+    background: #fff;
+    color: #000;
+  }
+
+  .vw-card,
+  .vw-surface,
+  .vw-surface-muted,
+  .vw-hero-shell {
+    border: 1px solid #cbd0d6;
+    break-inside: avoid;
+  }
 }
 
-.vw-hero-highlight-copy {
-  @apply mt-2 text-sm leading-6 text-zinc-700 dark:text-zinc-300;
-}
-
-/* Typography helpers */
-.vw-lead {
-  @apply text-base leading-7 text-zinc-600 dark:text-zinc-400 md:text-lg;
-}
-
-.vw-card-title {
-  @apply text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50;
-}
-
-.vw-card-copy {
-  @apply mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400;
-}
-
-.vw-stat-label {
-  @apply text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400;
-}
-
-.vw-stat-value {
-  @apply mt-3 text-xl font-semibold leading-tight text-zinc-900 dark:text-zinc-50 md:text-2xl;
-}
-
-.vw-stat-copy {
-  @apply mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400;
-}
-
+/* ============================================================
+   Reduced motion
+   ============================================================ */
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
+  }
+
+  .vw-reveal {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+
+  .vw-hero-canvas {
+    animation: none !important;
   }
 
   *,
